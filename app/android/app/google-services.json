@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "635460486045",
+    "project_id": "tbd-hackathon-app",
+    "storage_bucket": "tbd-hackathon-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:635460486045:android:54459594b6412f769fa574",
+        "android_client_info": {
+          "package_name": "com.example.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC-RGZvif72BrhvaBpG5ypFRKm1sM4BWsA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
