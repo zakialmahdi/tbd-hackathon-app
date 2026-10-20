@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="strict-origin-when-cross-origin">
 <title>ReLoop Admin</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
@@ -38,7 +39,7 @@ h3{font-size:16px;margin:26px 0 12px}
 .item img{width:100%;height:100%;object-fit:cover}
 .bar{height:6px;border-radius:9px;background:var(--bd);margin:8px 0}.bar i{display:block;height:100%;border-radius:9px;background:var(--g)}
 label{display:block;font-weight:600;margin:14px 0 5px}
-input{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--bd);background:var(--card);color:var(--tx);font:inherit}
+input,select{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--bd);background:var(--card);color:var(--tx);font:inherit}
 .note{color:var(--mu);font-size:13px;margin-top:5px}
 #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:10px 18px;border-radius:99px;display:none;z-index:9999}
 #login{position:fixed;inset:0;background:var(--bg);display:none;place-items:center;z-index:9000}
@@ -53,6 +54,7 @@ main{padding:20px 16px 90px}.split{grid-template-columns:1fr}#map{height:340px}}
  <h1>ReLoop<small>Admin console</small></h1>
  <button data-p="home" class="on">🏠 Overview</button>
  <button data-p="reports">📍 Reports</button>
+ <button data-p="bins">🗺️ Bin Map</button>
  <button data-p="market">🛍️ ReMarket</button>
  <button data-p="settings">⚙️ Settings</button>
 </nav>
@@ -64,9 +66,14 @@ main{padding:20px 16px 90px}.split{grid-template-columns:1fr}#map{height:340px}}
 <div id="toast"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script type="module">
-/* ============ 1. PASTE YOUR FIREBASE CONFIG HERE (leave empty for demo mode) ============ */
+/* ============ 1. PASTE YOUR FIREBASE CONFIG HERE (empty = demo mode) ============ */
 const firebaseConfig = {
-  // apiKey:"", authDomain:"", projectId:"", storageBucket:"", messagingSenderId:"", appId:""
+  apiKey: "AIzaSyDQn3NwF3dTwE9W1l8W8v3fhpxwkuO82m0",
+  authDomain: "tbd-hackathon-app.firebaseapp.com",
+  projectId: "tbd-hackathon-app",
+  storageBucket: "tbd-hackathon-app.firebasestorage.app",
+  messagingSenderId: "635460486045",
+  appId: "1:635460486045:web:0493384ea9ef935a9fa574"
 };
 /* ========================================================================================= */
 const LIVE = !!firebaseConfig.projectId;
@@ -75,8 +82,9 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 const toast = m => { const t=$('#toast'); t.textContent=m; t.style.display='block'; setTimeout(()=>t.style.display='none',2600); };
 const ICON = {'Blocked drain':'🏠','Bin full':'🗑️','Illegal dumping':'⚠️','Other':'⋯'};
 const LABEL = {new:'New',in_progress:'In progress',resolved:'Resolved',rejected:'Rejected',pending:'Pending',approved:'Approved',allowed:'AI: allowed',review:'AI: needs review'};
-const S = Object.assign({model:'',thr:0.8,auto:false}, JSON.parse(localStorage.getItem('reloop') || '{}'));
-const D = { reports:[], listings:[] };
+const S = Object.assign({model:'',thr:0.8,auto:true}, JSON.parse(localStorage.getItem('reloop') || '{}'));
+const D = { reports:[], listings:[], bins:[] };
+const BIN={general:{n:'General waste',c:'#6b7a72'},recycle:{n:'Recycling',c:'#2f9e63'},organic:{n:'Organic',c:'#8a5a2b'},ewaste:{n:'E-waste',c:'#3a7bd5'},hazardous:{n:'Hazardous',c:'#c0392b'}};
 let page='home', map, markers={}, onChange=()=>{}, fb={};
 
 /* ---------- data layer: Firestore when configured, sample data otherwise ---------- */
@@ -90,17 +98,18 @@ const DEMO = {
  listings:[
   {id:'l1',title:'Wooden chair (restored)',price:25,emoji:'🪑',seller:'Aina',status:'pending',createdAt:now-2*36e5},
   {id:'l2',title:'Glass jars, set of 12',price:10,emoji:'🫙',seller:'Raj',status:'approved',aiScore:.94,aiLabel:'allowed',createdAt:now-864e5},
-  {id:'l3',title:'Used spray can (aerosol)',price:3,emoji:'🧴',seller:'Wei',status:'pending',aiScore:.31,aiLabel:'review',createdAt:now-5*36e5}]
+  {id:'l3',title:'Used spray can (aerosol)',price:3,emoji:'🧴',seller:'Wei',status:'pending',aiScore:.31,aiLabel:'review',createdAt:now-5*36e5}],
+ bins:[{id:'b1',name:'Taman Sri playground',type:'general',lat:3.1065,lng:101.7430},{id:'b2',name:'Cheras Perdana recycling point',type:'recycle',lat:3.0750,lng:101.7680}]
 };
 async function initData(){
-  if(!LIVE){ D.reports=DEMO.reports; D.listings=DEMO.listings; return; }
+  if(!LIVE){ D.reports=DEMO.reports; D.listings=DEMO.listings; D.bins=DEMO.bins; return; }
   const [{initializeApp},fs,au] = await Promise.all([
-    import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'),
-    import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'),
-    import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js')]);
+    import('https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js'),
+    import('https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js'),
+    import('https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js')]);
   const app=initializeApp(firebaseConfig); fb={fs,au,db:fs.getFirestore(app),auth:au.getAuth(app)};
   await new Promise(res=>{
-    const go=()=>{ ['reports','listings'].forEach(c=>fs.onSnapshot(fs.query(fs.collection(fb.db,c),fs.orderBy('createdAt','desc')),snap=>{
+    const go=()=>{ ['reports','listings','bins'].forEach(c=>fs.onSnapshot(fs.query(fs.collection(fb.db,c),fs.orderBy('createdAt','desc')),snap=>{
         D[c]=snap.docs.map(d=>{const x=d.data(); return {id:d.id,...x,createdAt:x.createdAt?.toMillis?x.createdAt.toMillis():x.createdAt}});
         onChange();},e=>toast('Firestore: '+e.code))); res(); };
     au.onAuthStateChanged(fb.auth,u=>{ if(u){$('#login').style.display='none';go();} else $('#login').style.display='grid'; });
@@ -111,16 +120,30 @@ async function patch(col,id,data){
   if(!LIVE){ Object.assign(D[col].find(x=>x.id===id),data); onChange(); return; }
   await fb.fs.updateDoc(fb.fs.doc(fb.db,col,id),data);
 }
+async function add(col,data){
+  if(!LIVE){ D[col].unshift({id:'d'+Date.now(),createdAt:Date.now(),...data}); onChange(); return; }
+  await fb.fs.addDoc(fb.fs.collection(fb.db,col),{...data,createdAt:fb.fs.serverTimestamp()});
+}
+async function removeDoc(col,id){
+  if(!LIVE){ D[col]=D[col].filter(x=>x.id!==id); onChange(); return; }
+  await fb.fs.deleteDoc(fb.fs.doc(fb.db,col,id));
+}
 
 /* ---------- AI check (Teachable Machine image model) ---------- */
 let model;
 const loadJs = u => new Promise((ok,no)=>{const s=document.createElement('script');s.src=u;s.onload=ok;s.onerror=no;document.head.append(s)});
-async function aiCheck(id){
+const checking=new Set();
+function autoCheck(){
+  if(!S.model) return;
+  D.listings.forEach(l=>{ if(l.status==='pending'&&l.aiScore==null&&l.imageUrl&&!checking.has(l.id)){ checking.add(l.id); aiCheck(l.id,true); } });
+}
+async function aiCheck(id,quiet){
+  const say=m=>{ if(!quiet) toast(m); };
   const l=D.listings.find(x=>x.id===id);
-  if(!S.model) return toast('Add your model URL in Settings first');
-  if(!l.imageUrl) return toast('Demo item has no photo. In live mode the app uploads one.');
+  if(!S.model) return say('Add your model URL in Settings first');
+  if(!l||!l.imageUrl) return say('This listing has no photo to check');
   try{
-    toast('Checking…');
+    say('Checking…');
     if(!model){ await loadJs('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js');
       await loadJs('https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js');
       const u=S.model.replace(/\/?$/,'/'); model=await tmImage.load(u+'model.json',u+'metadata.json'); }
@@ -128,8 +151,8 @@ async function aiCheck(id){
     const p=await model.predict(img); const ok=p.find(x=>x.className.toLowerCase()==='allowed');
     const score=ok?ok.probability:0, pass=score>=S.thr;
     const up={aiScore:score,aiLabel:pass?'allowed':'review'}; if(pass&&S.auto) up.status='approved';
-    await patch('listings',id,up); toast(pass?'AI says: allowed':'AI flagged for review');
-  }catch(e){ toast('AI check failed: '+e.message); }
+    await patch('listings',id,up); toast(pass?(S.auto?'AI approved: '+l.title:'AI: '+l.title+' looks OK'):'AI flagged for review: '+l.title);
+  }catch(e){ say('AI check failed: '+e.message); }
 }
 
 /* ---------- views ---------- */
@@ -149,25 +172,82 @@ function home(){ const R=D.reports,L=D.listings;
  <h3>Latest reports</h3><div class="card">${R.slice(0,4).map(repRow).join('')||'<p class="empty">No reports yet.</p>'}</div>`; }
 function reports(){ return `<h2>Reports</h2><p class="sub">Every report lodged in the app appears here with its location.</p>
  <div class="split"><div id="map"></div><div class="card list">${D.reports.map(repRow).join('')||'<p class="empty">No reports yet. New ones from the app show up here live.</p>'}</div></div>`; }
-function market(){ return `<h2>ReMarket</h2><p class="sub">Approve what users can sell. The AI check gives a first opinion; you decide.</p>
+function market(){ return `<h2>ReMarket</h2><p class="sub">New listings are checked by AI automatically. Passing items go live; the rest wait for you.</p>
  <div class="grid">${D.listings.map(l=>`<div class="card item"><div class="img">${l.imageUrl?`<img src="${esc(l.imageUrl)}" alt="" crossorigin="anonymous">`:esc(l.emoji||'📦')}</div>
  <b>${esc(l.title)}</b><div class="note">RM ${esc(l.price)} · ${esc(l.seller||'user')}</div>
- ${l.aiScore!=null?`<div class="bar"><i style="width:${Math.round(l.aiScore*100)}%"></i></div><span class="chip s-${esc(l.aiLabel)}">${LABEL[l.aiLabel]} · ${Math.round(l.aiScore*100)}%</span>`:'<div class="note">Not checked by AI yet</div>'}
+ ${l.aiScore!=null?`<div class="bar"><i style="width:${Math.round(l.aiScore*100)}%"></i></div><span class="chip s-${esc(l.aiLabel)}">${LABEL[l.aiLabel]} · ${Math.round(l.aiScore*100)}%</span>`:`<div class="note">${S.model?'AI check runs automatically…':'AI auto-check is off: add your model URL in Settings'}</div>`}
  <div style="margin-top:8px"><span class="chip s-${esc(l.status)}">${LABEL[l.status]}</span></div>
- <div class="acts"><button class="btn ghost" data-ai="${esc(l.id)}">Run AI check</button>
+ <div class="acts">${l.aiScore!=null?`<button class="btn ghost" data-ai="${esc(l.id)}">Re-check</button>`:''}
  ${l.status!=='approved'?`<button class="btn" data-l="approved" data-id="${esc(l.id)}">Approve</button>`:''}
  ${l.status!=='rejected'?`<button class="btn red" data-l="rejected" data-id="${esc(l.id)}">Reject</button>`:''}</div></div>`).join('')||'<p class="empty">No listings yet.</p>'}</div>`; }
+function bins(){ return `<h2>Bin Map</h2><p class="sub">Search for a place or click the map, drag the pin to fine-tune, then save. It appears in the user app.</p>
+ <div class="split"><div id="map"></div><div>
+ <div class="card"><b>Add a bin</b>
+ <label for="bq">Search a place</label>
+ <div style="display:flex;gap:6px"><input id="bq" placeholder="e.g. Taman Sri Muda, Shah Alam"><button class="btn" id="bg">Search</button></div>
+ <div id="br"></div>
+ <div class="acts"><button class="btn ghost" id="bm">📍 Use my current location</button></div>
+ <label for="bn">Name / landmark</label><input id="bn" placeholder="e.g. Taman Sri playground">
+ <label for="bt">Type</label><select id="bt">${Object.entries(BIN).map(([k,v])=>`<option value="${k}">${v.n}</option>`).join('')}</select>
+ <p class="note" id="bc">No location chosen yet. Click the map.</p>
+ <div class="acts"><button class="btn" id="bs">Save bin</button></div></div>
+ <div class="card list" id="bl" style="margin-top:14px"></div></div></div>`; }
+let pick=null, binMarks=[], sres=[];
+function showPick(){ const p=pick.getLatLng(); $('#bc').textContent='Location: '+p.lat.toFixed(5)+', '+p.lng.toFixed(5); }
+function setPick(ll,label){
+  if(pick) pick.setLatLng(ll); else { pick=L.marker(ll,{draggable:true}).addTo(map); pick.on('dragend',showPick); }
+  showPick(); if(label&&!$('#bn').value) $('#bn').value=label;
+}
+async function searchPlace(){
+  const q=$('#bq').value.trim(); if(!q) return;
+  $('#br').innerHTML='<p class="note">Searching…</p>';
+  try{
+    const j=await (await fetch('https://photon.komoot.io/api/?limit=5&q='+encodeURIComponent(q))).json();
+    sres=j.features||[];
+    $('#br').innerHTML=sres.length?sres.map((x,i)=>{const p=x.properties;const t=[p.name,p.street,p.district||p.city,p.state].filter(Boolean).join(', ');
+      return `<div class="row" data-sr="${i}"><div class="m"><b>${esc(p.name||t)}</b><span>${esc(t)}</span></div></div>`;}).join(''):'<p class="note">No results. Try a nearby landmark, or click the map.</p>';
+  }catch(e){ $('#br').innerHTML='<p class="note">Search failed. You can still click the map.</p>'; }
+}
+function drawBinMap(){
+  if(map) map.remove(); map=L.map('map').setView([3.1,101.65],10); pick=null; binMarks=[];
+  addBase(map);
+  map.on('click',e=>setPick(e.latlng));
+  $('#bm').onclick=()=>{ if(!navigator.geolocation) return toast('Location is not supported here');
+    navigator.geolocation.getCurrentPosition(p=>{ const ll=[p.coords.latitude,p.coords.longitude]; map.flyTo(ll,18); setPick(ll); },()=>toast('Could not get your location. Allow location access in the browser.')); };
+  $('#bg').onclick=searchPlace; $('#bq').onkeydown=e=>{ if(e.key==='Enter') searchPlace(); };
+  $('#bs').onclick=async()=>{
+    if(!pick) return toast('Click the map to choose a location');
+    const name=$('#bn').value.trim(); if(!name) return toast('Give the bin a name');
+    const ll=pick.getLatLng();
+    try{ await add('bins',{name,type:$('#bt').value,lat:ll.lat,lng:ll.lng}); }catch(e){ return toast('Could not save: '+e.message); }
+    $('#bn').value=''; map.removeLayer(pick); pick=null; $('#bc').textContent='Saved. Click the map to add another.'; toast('Bin added'); };
+  refreshBins(true);
+}
+function refreshBins(fit){
+  binMarks.forEach(m=>m.remove()); binMarks=[]; const pts=[]; const T=b=>BIN[b.type]||BIN.general;
+  D.bins.forEach(b=>{ if(typeof b.lat!=='number'||typeof b.lng!=='number') return;
+    binMarks.push(L.circleMarker([b.lat,b.lng],{radius:9,color:'#fff',weight:2,fillColor:T(b).c,fillOpacity:1}).addTo(map).bindPopup(`<b>${esc(b.name)}</b><br>${esc(T(b).n)}`)); pts.push([b.lat,b.lng]); });
+  if(fit&&pts.length) map.fitBounds(pts,{padding:[40,40],maxZoom:14});
+  $('#bl').innerHTML=D.bins.map(b=>`<div class="row"><div class="ic" style="background:var(--gl)">🗑️</div><div class="m"><b>${esc(b.name)}</b><span>${esc(T(b).n)}</span></div><button class="btn red" data-del="${esc(b.id)}">Delete</button></div>`).join('')||'<p class="empty">No bins yet.</p>';
+}
 function settings(){ return `<h2>Settings</h2><p class="sub">Connection and AI moderation.</p>
  <div class="card"><b>Connection</b><p class="note">${LIVE?'Connected to Firebase project <b>'+esc(firebaseConfig.projectId)+'</b>':'Demo mode: sample data only. Add your Firebase config at the top of the script to go live.'}</p>
  <label for="mu">AI model URL (Teachable Machine)</label><input id="mu" value="${esc(S.model)}" placeholder="https://teachablemachine.withgoogle.com/models/XXXX/">
  <p class="note">Train a model with two classes named “allowed” and “not allowed”, then paste its shared link.</p>
  <label for="th">Minimum confidence to pass (0 to 1)</label><input id="th" type="number" min="0" max="1" step="0.05" value="${S.thr}">
- <label style="display:flex;gap:8px;align-items:center"><input id="au" type="checkbox" style="width:auto" ${S.auto?'checked':''}> Auto-approve items that pass</label>
+ <label style="display:flex;gap:8px;align-items:center"><input id="au" type="checkbox" style="width:auto" ${S.auto?'checked':''}> Auto-approve items that pass (others wait for your review)</label>
  <div class="acts"><button class="btn" id="sv">Save settings</button>${LIVE?'<button class="btn ghost" id="so">Sign out</button>':''}</div></div>`; }
 
+function addBase(m){
+  const t=(u,a)=>L.tileLayer(u,{maxZoom:19,attribution:a});
+  const street=t('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}','Tiles © Esri');
+  const sat=t('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}','Tiles © Esri');
+  const osm=t('https://tile.openstreetmap.org/{z}/{x}/{y}.png','© OpenStreetMap');
+  street.addTo(m); L.control.layers({'Street':street,'Satellite':sat,'OpenStreetMap':osm}).addTo(m);
+}
 function drawMap(){
   if(map){map.remove();} map=L.map('map').setView([3.1,101.65],10); markers={};
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(map);
+  addBase(map);
   const col={new:'#f08a3c',in_progress:'#e0a31a',resolved:'#2f9e63',rejected:'#999'}; const pts=[];
   D.reports.filter(r=>typeof r.lat==='number'&&typeof r.lng==='number').forEach(r=>{
     const m=L.circleMarker([r.lat,r.lng],{radius:10,color:'#fff',weight:2,fillColor:col[r.status]||'#888',fillOpacity:1}).addTo(map)
@@ -176,21 +256,24 @@ function drawMap(){
   if(pts.length) map.fitBounds(pts,{padding:[40,40],maxZoom:14});
 }
 function render(){
-  $('#main').innerHTML = {home,reports,market,settings}[page]();
+  $('#main').innerHTML = {home,reports,bins,market,settings}[page]();
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.p===page));
   if(page==='reports') drawMap();
+  if(page==='bins') drawBinMap();
   if(page==='settings'){
     $('#sv').onclick=()=>{S.model=$('#mu').value.trim();S.thr=+$('#th').value||0.8;S.auto=$('#au').checked;model=null;localStorage.setItem('reloop',JSON.stringify(S));toast('Settings saved');};
     if($('#so')) $('#so').onclick=()=>fb.au.signOut(fb.auth);
   }
 }
-onChange=()=>{ if(page!=='settings') render(); };
+onChange=()=>{ autoCheck(); if(page==='bins') refreshBins(); else if(page!=='settings') render(); };
 document.addEventListener('click',e=>{
   const n=e.target.closest('nav button'); if(n){page=n.dataset.p;render();return;}
   const a=e.target.closest('[data-a]'); if(a){patch('reports',a.dataset.id,{status:a.dataset.a});toast('Report updated');return;}
   const l=e.target.closest('[data-l]'); if(l){patch('listings',l.dataset.id,{status:l.dataset.l});toast('Listing '+l.dataset.l);return;}
+  const sr=e.target.closest('[data-sr]'); if(sr&&map){ const x=sres[sr.dataset.sr]; const [lng,lat]=x.geometry.coordinates; map.flyTo([lat,lng],17); setPick([lat,lng],x.properties.name); $('#br').innerHTML=''; return; }
+  const d=e.target.closest('[data-del]'); if(d){ if(confirm('Delete this bin?')) removeDoc('bins',d.dataset.del).then(()=>toast('Bin deleted')); return; }
   const i=e.target.closest('[data-ai]'); if(i){aiCheck(i.dataset.ai);return;}
   const r=e.target.closest('[data-rid]'); if(r&&map&&markers[r.dataset.rid]){const m=markers[r.dataset.rid];map.flyTo(m.getLatLng(),15);m.openPopup();}
 });
-await initData(); render();
+await initData(); render(); autoCheck();
 </script></body></html>
