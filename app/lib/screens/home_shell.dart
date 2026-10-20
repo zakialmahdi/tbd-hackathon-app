@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'bin_map_page.dart';
@@ -6,18 +7,20 @@ import 'services_page.dart';
 import 'settings_page.dart';
 
 class HomeShell extends StatefulWidget {
-  const HomeShell({super.key});
+  final Stream<User?>? authStateChanges;
+
+  const HomeShell({super.key, this.authStateChanges});
   @override
   State<HomeShell> createState() => _HomeShellState();
 }
 
 class _HomeShellState extends State<HomeShell> {
   int _i = 0;
-  final _pages = const [
-    ReMarketPage(),
-    BinMapPage(),
-    ServicesPage(),
-    SettingsPage(),
+  late final _pages = [
+    const ReMarketPage(),
+    const BinMapPage(),
+    const ServicesPage(),
+    SettingsPage(authStateChanges: widget.authStateChanges),
   ];
   @override
   Widget build(BuildContext context) => Scaffold(
