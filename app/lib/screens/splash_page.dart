@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../app_config.dart';
+import 'auth_gate.dart';
 import 'home_shell.dart';
 
 class SplashPage extends StatefulWidget {
-  const SplashPage({super.key});
+  final Stream<User?>? authStateChanges;
+
+  const SplashPage({super.key, this.authStateChanges});
   @override
   State<SplashPage> createState() => _SplashPageState();
 }
@@ -17,7 +21,14 @@ class _SplashPageState extends State<SplashPage> {
       if (mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const HomeShell()),
+          MaterialPageRoute(
+            builder: (_) => AuthGate(
+              authStateChanges: widget.authStateChanges,
+              authenticatedChild: HomeShell(
+                authStateChanges: widget.authStateChanges,
+              ),
+            ),
+          ),
         );
       }
     });

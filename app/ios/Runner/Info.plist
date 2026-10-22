@@ -24,6 +24,10 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Your location is used to center the bin map on your current position.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Select a profile picture to save on this device.</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>

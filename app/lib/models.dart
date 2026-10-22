@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Item {
   final String title, category, condition, seller, desc, distance;
@@ -125,114 +126,81 @@ String statusLabel(BinStatus s) => switch (s) {
 };
 
 class Bin {
-  final String id, name, type, emptied;
+  final String id, name, type;
   final BinStatus status;
   final int fill;
-  final double x, y; // fractions of map
-  const Bin(
-    this.id,
-    this.name,
-    this.type,
-    this.status,
-    this.fill,
-    this.emptied,
-    this.x,
-    this.y,
-  );
-}
+  final double latitude, longitude;
+  final DateTime? emptied;
+  final String? maintenanceNote;
 
-const bins = <Bin>[
-  Bin(
-    'D-014',
-    'Jalan Reko Bin',
-    'Domestic',
-    BinStatus.full,
-    96,
-    'Yesterday 6:10 PM',
-    0.15,
-    0.20,
-  ),
-  Bin(
-    'R-007',
-    'Kajang Sentral Recycle Point',
-    'Recycle',
-    BinStatus.half,
-    55,
-    'Today 7:30 AM',
-    0.40,
-    0.20,
-  ),
-  Bin(
-    'D-022',
-    'Taman Sri Kajang Bin',
-    'Domestic',
-    BinStatus.empty,
-    8,
-    'Today 8:00 AM',
-    0.70,
-    0.20,
-  ),
-  Bin(
-    'R-011',
-    'Stadium Kajang Recycle Hub',
-    'Recycle',
-    BinStatus.empty,
-    15,
-    'Today 6:45 AM',
-    0.40,
-    0.45,
-  ),
-  Bin(
-    'D-031',
-    'Wet Market Bin',
-    'Domestic',
-    BinStatus.half,
-    62,
-    'Today 5:50 AM',
-    0.70,
-    0.45,
-  ),
-  Bin(
-    'R-019',
-    'Library Recycle Bin',
-    'Recycle',
-    BinStatus.full,
-    91,
-    '2 days ago',
-    0.15,
-    0.75,
-  ),
-  Bin(
-    'D-040',
-    'Bus Stop Bin A3',
-    'Domestic',
-    BinStatus.maintenance,
-    0,
-    'Under repair',
-    0.40,
-    0.75,
-  ),
-  Bin(
-    'D-043',
-    'Food Court Bin',
-    'Domestic',
-    BinStatus.half,
-    48,
-    'Today 9:15 AM',
-    0.70,
-    0.75,
-  ),
-  Bin(
-    'R-024',
-    'Mosque Recycle Point',
-    'Recycle',
-    BinStatus.empty,
-    5,
-    'Today 7:00 AM',
-    0.90,
-    0.60,
-  ),
-];
+  const Bin({
+    required this.id,
+    required this.name,
+    required this.type,
+    required this.status,
+    required this.fill,
+    required this.latitude,
+    required this.longitude,
+    this.emptied,
+    this.maintenanceNote,
+  });
+
+  factory Bin.fromFirestore(
+    QueryDocumentSnapshot<Map<String, dynamic>> document,
+  ) {
+    final data = document.data();
+    final name = data['name'];
+    final type = data['type'];
+    final rawStatus = data['status'];
+    final fill = data['fill'];
+    final location = data['location'];
+    final emptied = data['emptied'];
+    final maintenanceNote = data['maintenanceNote'];
+
+    if (name is! String ||
+        type is! String ||
+        rawStatus is! String ||
+        fill is! int ||
+        fill < 0 ||
+        fill > 100 ||
+        (type != 'Domestic' && type != 'Recycle') ||
+        location is! GeoPoint ||
+        (emptied != null && emptied is! Timestamp) ||
+        (maintenanceNote != null && maintenanceNote is! String)) {
+      throw FormatException('Bin document ${document.id} has invalid fields.');
+    }
+
+    final status = BinStatus.values.where((value) {
+      return value.name == rawStatus;
+    });
+    if (status.isEmpty) {
+      throw FormatException(
+        'Bin document ${document.id} has unknown status "$rawStatus".',
+      );
+    }
+
+    return Bin(
+      id: document.id,
+      name: name,
+      type: type,
+      status: status.first,
+      fill: fill,
+      latitude: location.latitude,
+      longitude: location.longitude,
+      emptied: (emptied as Timestamp?)?.toDate(),
+      maintenanceNote: maintenanceNote as String?,
+    );
+  }
+
+  String get emptiedLabel {
+    final date = emptied?.toLocal();
+    if (date == null) return maintenanceNote ?? 'Not recorded';
+    final hour = date.hour % 12 == 0 ? 12 : date.hour % 12;
+    final minute = date.minute.toString().padLeft(2, '0');
+    final period = date.hour < 12 ? 'AM' : 'PM';
+    return '${date.day}/${date.month}/${date.year} $hour:$minute $period';
+  }
+}
 
 const reportCats = <String, IconData>{
   'Blocked drain': Icons.water_damage,

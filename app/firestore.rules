@@ -1,0 +1,29 @@
+rules_version = '2';
+
+// Bin documents use a string document ID and contain name/type/status strings,
+// integer fill percentage, GeoPoint location, and optional timestamp emptied
+// and maintenanceNote string fields.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow get: if request.auth != null && request.auth.uid == userId;
+      allow list: if false;
+      allow create: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly(['co2SavedKg'])
+        && request.resource.data.keys().hasAll(['co2SavedKg'])
+        && request.resource.data.co2SavedKg is number
+        && request.resource.data.co2SavedKg == 0;
+      allow update, delete: if false;
+    }
+
+    match /bins/{binId} {
+      allow get, list: if request.auth != null;
+      allow create, update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

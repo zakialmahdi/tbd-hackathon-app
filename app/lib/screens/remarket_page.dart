@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../app_config.dart';
 import '../models.dart';
+import '../services/auth_service.dart';
+import '../services/co2_savings_service.dart';
 import '../shared_widgets.dart';
 import 'item_detail_page.dart';
 import 'my_listings_page.dart';
@@ -14,6 +16,8 @@ class ReMarketPage extends StatefulWidget {
 }
 
 class _ReMarketPageState extends State<ReMarketPage> {
+  late final Stream<double>? _co2SavingsStream;
+
   static const cats = [
     'All',
     'Furniture',
@@ -27,6 +31,15 @@ class _ReMarketPageState extends State<ReMarketPage> {
   String cat = 'All';
   String q = '';
   final fav = <String>{};
+
+  @override
+  void initState() {
+    super.initState();
+    final userId = AuthService().currentUser?.uid;
+    _co2SavingsStream = userId == null
+        ? null
+        : Co2SavingsService().watchTotalKg(userId);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -109,7 +122,7 @@ class _ReMarketPageState extends State<ReMarketPage> {
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   itemCount: cats.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  separatorBuilder: (_, _) => const SizedBox(width: 8),
                   itemBuilder: (_, i) => ChoiceChip(
                     label: Text(cats[i]),
                     selected: cat == cats[i],
@@ -130,13 +143,27 @@ class _ReMarketPageState extends State<ReMarketPage> {
                     borderRadius: BorderRadius.circular(18),
                   ),
                   child: Row(
-                    children: const [
-                      Icon(Icons.eco, color: Colors.white, size: 34),
-                      SizedBox(width: 12),
+                    children: [
+                      const Icon(Icons.eco, color: Colors.white, size: 34),
+                      const SizedBox(width: 12),
                       Expanded(
-                        child: Text(
-                          'Every item you reuse saves ~4.2 kg of CO₂. You\'ve saved 38 kg so far!',
-                          style: TextStyle(color: Colors.white),
+                        child: StreamBuilder<double>(
+                          stream: _co2SavingsStream,
+                          builder: (context, snapshot) {
+                            final message = _co2SavingsStream == null
+                                ? 'Sign in to see your CO₂ saved total.'
+                                : snapshot.hasError
+                                ? 'Could not load your CO₂ saved total.'
+                                : !snapshot.hasData
+                                ? 'Loading your CO₂ saved total…'
+                                : 'Every item you reuse saves ~4.2 kg of CO₂. '
+                                      'Your total: '
+                                      '${snapshot.data!.toStringAsFixed(1)} kg.';
+                            return Text(
+                              message,
+                              style: const TextStyle(color: Colors.white),
+                            );
+                          },
                         ),
                       ),
                     ],
