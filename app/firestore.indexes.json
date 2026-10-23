@@ -1,17 +1,4 @@
 {
-  "indexes": [],
-  "fieldOverrides": [
-    {
-      "collectionGroup": "notificationDevices",
-      "fieldPath": "enabled",
-      "indexes": [
-        {
-          "order": "ASCENDING",
-          "queryScope": "COLLECTION_GROUP"
-        }
-      ]
-    }
-  ]
   "indexes": [
     {
       "collectionGroup": "listings",
@@ -30,5 +17,16 @@
       ]
     }
   ],
-  "fieldOverrides": []
+  "fieldOverrides": [
+    {
+      "collectionGroup": "notificationDevices",
+      "fieldPath": "enabled",
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    }
+  ]
 }

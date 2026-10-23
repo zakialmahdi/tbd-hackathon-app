@@ -15,6 +15,8 @@ service firebase.storage {
             && request.resource.contentType.matches('image/.*')
           )
         );
+    }
+
     match /listings/{userId}/{listingId}/{fileName} {
       allow read: if request.auth != null;
       allow create, update: if request.auth != null
