@@ -86,7 +86,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
         title: const Text('Make an offer'),
         content: TextField(
           controller: controller,
-          keyboardType: TextInputType.number,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
           decoration: const InputDecoration(prefixText: 'RM '),
         ),
         actions: [

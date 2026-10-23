@@ -158,7 +158,8 @@ service cloud.firestore {
       allow get, list: if request.auth != null
         && request.auth.uid in resource.data.participants;
       allow update: if request.auth != null
-        && resource.data.sellerId == request.auth.uid;
+        && (resource.data.sellerId == request.auth.uid
+          || resource.data.buyerId == request.auth.uid);
     }
 
     match /conversations/{conversationId} {
@@ -180,9 +181,7 @@ service cloud.firestore {
             ).data.participants);
         allow create: if request.auth != null
           && request.resource.data.senderId == request.auth.uid
-          && (!('status' in getAfter(
-            /databases/$(database)/documents/conversations/$(conversationId)
-          ).data)
+          && (request.resource.data.system == true
             || getAfter(
               /databases/$(database)/documents/conversations/$(conversationId)
             ).data.status != 'closed')

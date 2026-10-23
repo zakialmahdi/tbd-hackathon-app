@@ -24,6 +24,49 @@ class ListingRepository {
 
   String? get currentUserId => _auth.currentUser?.uid;
 
+  Stream<Map<String, String>> watchConversationNames(String conversationId) =>
+      _firestore
+          .collection('conversations')
+          .doc(conversationId)
+          .snapshots()
+          .map((snapshot) {
+            final data = snapshot.data() ?? const <String, dynamic>{};
+            return {
+              if (data['buyerId'] is String && data['buyerName'] is String)
+                data['buyerId'] as String: data['buyerName'] as String,
+              if (data['sellerId'] is String && data['sellerName'] is String)
+                data['sellerId'] as String: data['sellerName'] as String,
+            };
+          });
+
+  Future<void> syncUserName(String name) async {
+    final userId = _auth.currentUser?.uid;
+    if (userId == null) return;
+    final conversations = await _firestore
+        .collection('conversations')
+        .where('participants', arrayContains: userId)
+        .get();
+    final offers = await _firestore
+        .collection('offers')
+        .where('participants', arrayContains: userId)
+        .get();
+    final batch = _firestore.batch();
+    for (final conversation in conversations.docs) {
+      batch.update(conversation.reference, {
+        conversation.data()['buyerId'] == userId ? 'buyerName' : 'sellerName':
+            name,
+      });
+    }
+    for (final offer in offers.docs) {
+      batch.update(offer.reference, {
+        offer.data()['buyerId'] == userId ? 'buyerName' : 'sellerName': name,
+      });
+    }
+    if (conversations.docs.isNotEmpty || offers.docs.isNotEmpty) {
+      await batch.commit();
+    }
+  }
+
   Stream<List<Item>> watchActiveListings() => _listings
       .where('status', isEqualTo: 'active')
       .snapshots()
@@ -57,20 +100,20 @@ class ListingRepository {
             for (final saved in snapshot.docs) {
               final data = saved.data();
               final listingId = data['listingId'];
-              if (listingId is String && listingId.isNotEmpty) {
-                final listing = await _listings.doc(listingId).get();
-                if (!listing.exists) {
-                  await saved.reference.delete();
-                  continue;
-                }
-                if (listing.data()?['soldTo'] == userId) {
-                  await saved.reference.delete();
-                  continue;
-                }
-                result.add(Item.fromSnapshot(listing));
+              if (listingId is! String || listingId.isEmpty) {
+                await saved.reference.delete();
                 continue;
               }
-              result.add(Item.fromData(id: saved.id, data: data));
+              final listing = await _listings.doc(listingId).get();
+              if (!listing.exists) {
+                await saved.reference.delete();
+                continue;
+              }
+              if (listing.data()?['soldTo'] == userId) {
+                await saved.reference.delete();
+                continue;
+              }
+              result.add(Item.fromSnapshot(listing));
             }
             return result;
           },
@@ -166,9 +209,20 @@ class ListingRepository {
         .collection('conversations')
         .where('participants', arrayContains: userId)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) {
-              return {'id': doc.id, ...doc.data()};
-            }).toList());
+        .map((snapshot) {
+          final chats = snapshot.docs.map((doc) {
+            return {'id': doc.id, ...doc.data()};
+          }).toList();
+          chats.sort((a, b) {
+            final aTime = a['updatedAt'] as Timestamp?;
+            final bTime = b['updatedAt'] as Timestamp?;
+            if (aTime == null && bTime == null) return 0;
+            if (aTime == null) return 1;
+            if (bTime == null) return -1;
+            return bTime.compareTo(aTime);
+          });
+          return chats;
+        });
   }
 
   Stream<List<Map<String, dynamic>>> watchMyOffers() {
@@ -180,7 +234,7 @@ class ListingRepository {
         .snapshots()
         .map((snapshot) => snapshot.docs.map((doc) {
               return {'id': doc.id, ...doc.data()};
-            }).toList());
+            }).where((offer) => offer['status'] == 'pending').toList());
   }
 
     Stream<List<Map<String, dynamic>>> watchConversationOffers(
@@ -189,6 +243,7 @@ class ListingRepository {
       final userId = _auth.currentUser?.uid;
       if (userId == null) return Stream.value(const []);
       final listingId = conversationId.split('_').first;
+      final buyerId = conversationId.split('_').skip(1).join('_');
       return _firestore
           .collection('offers')
           .where('participants', arrayContains: userId)
@@ -196,7 +251,11 @@ class ListingRepository {
           .map((snapshot) {
             final offers = snapshot.docs
                 .map((doc) => {'id': doc.id, ...doc.data()})
-                .where((offer) => offer['listingId'] == listingId)
+                .where(
+                  (offer) =>
+                      offer['listingId'] == listingId &&
+                      offer['buyerId'] == buyerId,
+                )
                 .toList();
             offers.sort((a, b) {
               final aTime = a['createdAt'] as Timestamp?;
@@ -276,8 +335,13 @@ class ListingRepository {
     final conversation = _firestore
         .collection('conversations')
         .doc(conversationId);
+    final conversationData = (await conversation.get()).data() ?? const {};
+    final senderName = conversationData['buyerId'] == user.uid
+        ? conversationData['buyerName'] as String? ?? user.email ?? 'Buyer'
+        : conversationData['sellerName'] as String? ?? user.email ?? 'Seller';
     await conversation.collection('messages').add({
       'senderId': user.uid,
+      'senderName': senderName,
       'text': text.trim(),
       'createdAt': Timestamp.now(),
     });

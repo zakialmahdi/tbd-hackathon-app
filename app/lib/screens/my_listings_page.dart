@@ -88,7 +88,7 @@ class MyListingsPage extends StatelessWidget {
                   ),
                   title: Text(i.title),
                   subtitle: Text('RM ${i.price.toStringAsFixed(0)}'),
-                  onTap: s == 'Saved'
+                  onTap: s == 'Saved' || s == 'Active' || s == 'Bought'
                       ? () => Navigator.push(
                           context,
                           MaterialPageRoute(

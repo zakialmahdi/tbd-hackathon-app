@@ -67,9 +67,7 @@ class _ReMarketPageState extends State<ReMarketPage> {
     return StreamBuilder<List<Item>>(
       stream: _listingRepository.watchActiveListings(),
       builder: (context, snapshot) {
-        final sourceByKey = <String, Item>{
-          for (final item in items) _itemKey(item): item,
-        };
+        final sourceByKey = <String, Item>{};
         for (final item in snapshot.data ?? const <Item>[]) {
           sourceByKey[_itemKey(item)] = item;
         }

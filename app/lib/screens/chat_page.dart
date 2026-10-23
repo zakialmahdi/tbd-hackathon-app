@@ -24,6 +24,8 @@ class _ChatPageState extends State<ChatPage> {
   final _repository = ListingRepository();
   final _controller = TextEditingController();
   final _currentUserId = FirebaseAuth.instance.currentUser?.uid;
+  late final StreamSubscription<Map<String, String>> _nameSubscription;
+  Map<String, String> _participantNames = const {};
   late final StreamSubscription<bool> _closedSubscription;
   bool _closed = false;
 
@@ -35,12 +37,18 @@ class _ChatPageState extends State<ChatPage> {
         .listen((closed) {
           if (mounted) setState(() => _closed = closed);
         });
+    _nameSubscription = _repository
+        .watchConversationNames(widget.conversationId)
+        .listen((names) {
+          if (mounted) setState(() => _participantNames = names);
+        });
   }
 
   @override
   void dispose() {
     _controller.dispose();
     _closedSubscription.cancel();
+    _nameSubscription.cancel();
     super.dispose();
   }
 
@@ -55,6 +63,18 @@ class _ChatPageState extends State<ChatPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Could not send message: $error')),
+        );
+      }
+    }
+  }
+
+  Future<void> _acceptOffer(Map<String, dynamic> offer) async {
+    try {
+      await _repository.acceptOffer(offer);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not accept offer: $error')),
         );
       }
     }
@@ -75,7 +95,9 @@ class _ChatPageState extends State<ChatPage> {
               if (!snapshot.hasData) {
                 return const Center(child: CircularProgressIndicator());
               }
-              final messages = snapshot.data!;
+                final messages = snapshot.data!
+                  .where((message) => message['system'] != true)
+                  .toList();
               if (messages.isEmpty) {
                 return const Center(child: Text('Start the conversation.'));
               }
@@ -107,7 +129,28 @@ class _ChatPageState extends State<ChatPage> {
                           : Theme.of(context).colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: Text(message['text'] as String? ?? ''),
+                    child: Column(
+                      crossAxisAlignment: isSystem || isMine
+                          ? CrossAxisAlignment.end
+                          : CrossAxisAlignment.start,
+                      children: [
+                        if (!isSystem)
+                            Text(
+                            isMine
+                              ? FirebaseAuth.instance.currentUser?.displayName ??
+                                'You'
+                              : _participantNames[message['senderId']] ??
+                                message['senderName'] as String? ??
+                                'Participant',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        Text(message['text'] as String? ?? ''),
+                      ],
+                    ),
                   ),
                 );
                 },
@@ -121,7 +164,7 @@ class _ChatPageState extends State<ChatPage> {
             final offers = snapshot.data ?? const <Map<String, dynamic>>[];
             if (offers.isEmpty) return const SizedBox.shrink();
             return SizedBox(
-              height: 132,
+              height: 156,
               child: ListView.separated(
                 padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
                 scrollDirection: Axis.horizontal,
@@ -131,7 +174,7 @@ class _ChatPageState extends State<ChatPage> {
                   offer: offers[index],
                   isSeller: offers[index]['sellerId'] ==
                       _repository.currentUserId,
-                  onAccept: () => _repository.acceptOffer(offers[index]),
+                  onAccept: () => _acceptOffer(offers[index]),
                   onReject: () => _repository.updateOfferStatus(
                     offers[index]['id'] as String,
                     'rejected',
@@ -205,7 +248,7 @@ class _OfferCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = offer['status'] as String? ?? 'pending';
-    final amount = (offer['amount'] as num?)?.toStringAsFixed(0) ?? '0';
+    final amount = (offer['amount'] as num?)?.toStringAsFixed(2) ?? '0.00';
     final statusColor = switch (status) {
       'accepted' => Colors.green,
       'rejected' => Colors.red,

@@ -20,6 +20,21 @@ Future<void> _openListing(BuildContext context, String? listingId) async {
   );
 }
 
+void _openOfferChat(BuildContext context, Map<String, dynamic> offer) {
+  final listingId = offer['listingId'];
+  final buyerId = offer['buyerId'];
+  if (listingId is! String || buyerId is! String) return;
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => ChatPage(
+        conversationId: '${listingId}_$buyerId',
+        title: offer['listingTitle'] as String? ?? 'Listing chat',
+      ),
+    ),
+  );
+}
+
 class InboxPage extends StatelessWidget {
   const InboxPage({super.key});
 
@@ -96,6 +111,18 @@ class _OfferInbox extends StatelessWidget {
   const _OfferInbox();
   static final _repository = ListingRepository();
 
+  Future<void> _accept(BuildContext context, Map<String, dynamic> offer) async {
+    try {
+      await _repository.acceptOffer(offer);
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not accept offer: $error')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) => StreamBuilder<List<Map<String, dynamic>>>(
     stream: _repository.watchMyOffers(),
@@ -113,7 +140,7 @@ class _OfferInbox extends StatelessWidget {
         itemBuilder: (_, index) {
           final offer = offers[index];
           final status = offer['status'] as String? ?? 'pending';
-          final amount = (offer['amount'] as num?)?.toStringAsFixed(0) ?? '0';
+          final amount = (offer['amount'] as num?)?.toStringAsFixed(2) ?? '0.00';
           final isSeller = offer['sellerId'] == _repository.currentUserId;
           final otherName = isSeller
               ? offer['buyerName'] as String? ?? 'Buyer'
@@ -128,7 +155,7 @@ class _OfferInbox extends StatelessWidget {
                       IconButton(
                         tooltip: 'Accept offer',
                         icon: const Icon(Icons.check, color: Colors.green),
-                        onPressed: () => _repository.acceptOffer(offer),
+                        onPressed: () => _accept(context, offer),
                       ),
                       IconButton(
                         tooltip: 'Reject offer',
@@ -141,10 +168,7 @@ class _OfferInbox extends StatelessWidget {
                     ],
                   )
                 : Chip(label: Text(status)),
-            onTap: () => _openListing(
-              context,
-              offer['listingId'] as String?,
-            ),
+            onTap: () => _openOfferChat(context, offer),
           );
         },
       );

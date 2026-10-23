@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../services/auth_service.dart';
+import '../services/listing_repository.dart';
 import '../services/profile_image_service.dart';
 
 class AccountSettingsPage extends StatefulWidget {
@@ -126,6 +127,7 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
 
     try {
       await _authService.updateProfile(username: _usernameController.text);
+      await ListingRepository().syncUserName(_usernameController.text.trim());
       if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(const SnackBar(content: Text('Profile updated.')));
