@@ -6,6 +6,11 @@ class Item {
   final double price;
   final IconData icon;
   final Color color;
+  final String id;
+  final String? ownerId;
+  final String status;
+  final String pickupAddress;
+  final List<String> imageUrls;
   const Item(
     this.title,
     this.price,
@@ -15,9 +20,98 @@ class Item {
     this.distance,
     this.desc,
     this.icon,
-    this.color,
+    this.color, {
+    this.id = '',
+    this.ownerId,
+    this.status = 'active',
+    this.pickupAddress = 'Pickup nearby',
+    this.imageUrls = const [],
+  }
   );
+
+  factory Item.fromFirestore(
+    QueryDocumentSnapshot<Map<String, dynamic>> document,
+  ) => Item.fromSnapshot(document);
+
+  factory Item.fromSnapshot(
+    DocumentSnapshot<Map<String, dynamic>> document,
+  ) {
+    final data = document.data();
+    if (data == null) {
+      throw FormatException('Listing document ${document.id} is empty.');
+    }
+    return Item.fromData(id: document.id, data: data);
+  }
+
+  factory Item.fromData({
+    required String id,
+    required Map<String, dynamic> data,
+  }) {
+    final title = data['title'];
+    final category = data['category'];
+    final condition = data['condition'];
+    final seller = data['seller'];
+    final description = data['description'];
+    final price = data['price'];
+    final ownerId = data['ownerId'];
+    final status = data['status'];
+    if (title is! String ||
+        category is! String ||
+        condition is! String ||
+        seller is! String ||
+        description is! String ||
+        price is! num ||
+        ownerId is! String ||
+        status is! String) {
+      throw FormatException(
+        'Listing document $id has invalid fields.',
+      );
+    }
+
+    return Item(
+      title,
+      price.toDouble(),
+      category,
+      condition,
+      seller,
+        data['pickupAddress'] as String? ??
+          data['distance'] as String? ??
+          'Pickup nearby',
+      description,
+      iconForCategory(category),
+      colorForCategory(category),
+      id: id,
+      ownerId: ownerId,
+      status: status,
+        pickupAddress: data['pickupAddress'] as String? ?? 'Pickup nearby',
+        imageUrls: (data['imageUrls'] as List<dynamic>? ?? const [])
+          .whereType<String>()
+          .toList(),
+    );
+  }
 }
+
+IconData iconForCategory(String category) => switch (category) {
+  'Furniture' => Icons.chair_alt,
+  'Electronics' => Icons.devices,
+  'Fashion' => Icons.checkroom,
+  'Books' => Icons.menu_book,
+  'Home' => Icons.home_outlined,
+  'Sports' => Icons.sports_basketball,
+  'Kids' => Icons.toys,
+  _ => Icons.recycling,
+};
+
+Color colorForCategory(String category) => switch (category) {
+  'Furniture' => const Color(0xFFE8C9A0),
+  'Electronics' => const Color(0xFFD5D5E8),
+  'Fashion' => const Color(0xFFC9D8F5),
+  'Books' => const Color(0xFFF5D6D6),
+  'Home' => const Color(0xFFD6F0D0),
+  'Sports' => const Color(0xFFB7E0F2),
+  'Kids' => const Color(0xFFFFE6A8),
+  _ => const Color(0xFFBFE8C8),
+};
 
 const items = <Item>[
   Item(

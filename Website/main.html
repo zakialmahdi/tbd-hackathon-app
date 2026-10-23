@@ -1,13 +1,16 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>ReLoop Admin</title>
+<title>VertivEra Admin</title>
 <style>
 :root{color-scheme:light;--g:#2f9e63;--g2:#3fb577;--gl:#e3f4ea;--o:#f08a3c;--ol:#fdebd9;--bg:#f8fdf9;--card:#fff;--tx:#14201a;--mu:#8a9890;--bd:#e8f0ea;--r:20px}
 *{box-sizing:border-box;margin:0}
 body{font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;display:flex}
 nav{background:#fff;border-right:1px solid var(--bd);width:220px;padding:24px 14px;display:flex;flex-direction:column;gap:6px;position:sticky;top:0;height:100vh}
 nav h1{font-size:22px;padding:0 12px 18px;color:var(--g)}
+#who{margin-top:auto;padding:12px;font-size:12px;color:var(--mu);word-break:break-all}#who button{margin-top:8px}
 nav small{display:block;color:var(--mu);font-weight:400;font-size:12px}
 nav button{all:unset;cursor:pointer;padding:11px 14px;border-radius:14px;display:flex;gap:10px;align-items:center;color:var(--mu);font-weight:600}
 nav button.on{background:var(--gl);color:var(--g)}
@@ -30,54 +33,61 @@ h3{font-size:16px;margin:26px 0 12px}
 .btn.o{background:var(--o)}.btn.ghost{background:var(--gl);color:var(--g)}.btn.red{background:#fde3e1;color:#c0392b}
 .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 .split{display:grid;grid-template-columns:1.4fr 1fr;gap:16px}
-#map{height:520px;border-radius:var(--r);border:1px solid var(--bd);position:relative;overflow:hidden;background:var(--gl);touch-action:none;cursor:grab;user-select:none}#map:focus-visible{outline:2px solid var(--g);outline-offset:2px}#map.drag{cursor:grabbing}
-#pop{position:absolute;transform:translate(-50%,-130%);background:#fff;border-radius:12px;padding:8px 12px;box-shadow:0 4px 14px rgba(0,0,0,.18);font-size:13px;pointer-events:none;white-space:nowrap}
-.list{max-height:520px;overflow:auto}.btn{display:inline-flex;align-items:center;min-height:36px}.mc{position:absolute;right:12px;top:12px;display:flex;flex-direction:column;gap:6px}.mc .btn{min-width:44px;min-height:44px;justify-content:center;font-size:18px;box-shadow:0 2px 8px rgba(20,60,35,.12)}.lg{position:absolute;left:12px;bottom:10px;display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--tx);background:rgba(255,255,255,.85);padding:6px 10px;border-radius:12px;pointer-events:none}.lg i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}.fl{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}.fl button{all:unset;cursor:pointer;font-size:12px;font-weight:700;padding:8px 12px;border-radius:99px;background:var(--bd);color:var(--mu)}.fl button.on{background:var(--gl);color:var(--g)}.fl button:focus-visible,.tile:focus-visible{outline:2px solid var(--g);outline-offset:2px}.tile[data-go]{cursor:pointer}#toast .btn{margin-left:12px;background:var(--gl);color:var(--g)}
+#map{height:520px;border-radius:var(--r);border:1px solid var(--bd)}
+.list{max-height:520px;overflow:auto}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
 .item .img{height:130px;border-radius:12px;background:var(--gl);display:grid;place-items:center;font-size:42px;overflow:hidden;margin-bottom:10px}
 .item img{width:100%;height:100%;object-fit:cover}
 .bar{height:6px;border-radius:9px;background:var(--bd);margin:8px 0}.bar i{display:block;height:100%;border-radius:9px;background:var(--g)}
 label{display:block;font-weight:600;margin:14px 0 5px}
-input{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--bd);background:var(--card);color:var(--tx);font:inherit}
+input,select{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--bd);background:var(--card);color:var(--tx);font:inherit}
 .note{color:var(--mu);font-size:13px;margin-top:5px}
 #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:10px 18px;border-radius:99px;display:none;z-index:9999}
 #login{position:fixed;inset:0;background:var(--bg);display:none;place-items:center;z-index:9000}
 #login .card{width:min(360px,90vw)}
 .empty{color:var(--mu);padding:24px;text-align:center}
 @media(max-width:760px){body{flex-direction:column-reverse}
-nav{width:100%;height:auto;position:fixed;bottom:0;flex-direction:row;justify-content:space-around;padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));background:var(--card);border-top:1px solid var(--bd);z-index:900}
-nav h1{display:none}nav button{flex-direction:column;gap:2px;font-size:11px;padding:6px 10px}
+nav{width:100%;height:auto;position:fixed;bottom:0;flex-direction:row;justify-content:space-around;padding:6px;background:var(--card);border-top:1px solid var(--bd);z-index:900}
+nav h1,#who{display:none}nav button{flex-direction:column;gap:2px;font-size:11px;padding:6px 10px}
 main{padding:20px 16px 90px}.split{grid-template-columns:1fr}#map{height:340px}}
 </style></head><body>
 <nav id="nav">
- <h1>ReLoop<small>Admin console</small></h1>
+ <h1>VertivEra<small>Admin console</small></h1>
  <button data-p="home" class="on">🏠 Overview</button>
  <button data-p="reports">📍 Reports</button>
+ <button data-p="bins">🗺️ Bin Map</button>
  <button data-p="market">🛍️ ReMarket</button>
  <button data-p="settings">⚙️ Settings</button>
+ <div id="who"></div>
 </nav>
 <main id="main"></main>
-<div id="login"><div class="card"><h2>Admin sign in</h2><p class="sub">ReLoop admin console</p>
- <label for="em">Email</label><input id="em" type="email" autocomplete="username">
- <label for="pw">Password</label><input id="pw" type="password" autocomplete="current-password">
+<div id="login"><div class="card"><h2>Admin sign in</h2><p class="sub">VertivEra admin console</p>
+ <label>Email</label><input id="em" type="email" autocomplete="username">
+ <label>Password</label><input id="pw" type="password" autocomplete="current-password">
  <div class="acts"><button class="btn" id="go">Sign in</button></div><p class="note" id="lerr"></p></div></div>
-<div id="toast" role="status" aria-live="polite"></div>
+<div id="toast"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script type="module">
-/* ============ PASTE YOUR FIREBASE CONFIG HERE (leave empty for demo mode) ============ */
+/* ============ 1. PASTE YOUR FIREBASE CONFIG HERE (empty = demo mode) ============ */
 const firebaseConfig = {
-  // apiKey:"", authDomain:"", projectId:"", storageBucket:"", messagingSenderId:"", appId:""
+  apiKey: "AIzaSyDQn3NwF3dTwE9W1l8W8v3fhpxwkuO82m0",
+  authDomain: "tbd-hackathon-app.firebaseapp.com",
+  projectId: "tbd-hackathon-app",
+  storageBucket: "tbd-hackathon-app.firebasestorage.app",
+  messagingSenderId: "635460486045",
+  appId: "1:635460486045:web:0493384ea9ef935a9fa574"
 };
-/* ====================================================================================== */
+/* ========================================================================================= */
 const LIVE = !!firebaseConfig.projectId;
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let tt; const toast = (m,undo) => { const t=$('#toast'); t.textContent=m; if(undo){ const b=document.createElement('button'); b.className='btn'; b.textContent='Undo'; b.onclick=()=>{undo();t.style.display='none'}; t.append(b); } t.style.display='block'; clearTimeout(tt); tt=setTimeout(()=>t.style.display='none',undo?6000:2600); };
+const toast = m => { const t=$('#toast'); t.textContent=m; t.style.display='block'; setTimeout(()=>t.style.display='none',2600); };
 const ICON = {'Blocked drain':'🏠','Bin full':'🗑️','Illegal dumping':'⚠️','Other':'⋯'};
 const LABEL = {new:'New',in_progress:'In progress',resolved:'Resolved',rejected:'Rejected',pending:'Pending',approved:'Approved',allowed:'AI: allowed',review:'AI: needs review'};
-let saved={}; try{ saved=JSON.parse(localStorage.getItem('reloop')||'{}'); }catch(e){}
-const S = Object.assign({model:'',thr:0.8,auto:false}, saved);
-const D = { reports:[], listings:[] };
-let page='home', sel=null, V=null, flt='all', MP=[], onChange=()=>{}, fb={};
+const S = Object.assign({model:'',thr:0.8,auto:true}, JSON.parse(localStorage.getItem('reloop') || '{}'));
+const D = { reports:[], listings:[], bins:[] };
+const BIN={general:{n:'General waste',c:'#6b7a72'},recycle:{n:'Recycling',c:'#2f9e63'},organic:{n:'Organic',c:'#8a5a2b'},ewaste:{n:'E-waste',c:'#3a7bd5'},hazardous:{n:'Hazardous',c:'#c0392b'}};
+let page='home', map, markers={}, onChange=()=>{}, fb={};
 
 /* ---------- data layer: Firestore when configured, sample data otherwise ---------- */
 const now = Date.now();
@@ -90,21 +100,21 @@ const DEMO = {
  listings:[
   {id:'l1',title:'Wooden chair (restored)',price:25,emoji:'🪑',seller:'Aina',status:'pending',createdAt:now-2*36e5},
   {id:'l2',title:'Glass jars, set of 12',price:10,emoji:'🫙',seller:'Raj',status:'approved',aiScore:.94,aiLabel:'allowed',createdAt:now-864e5},
-  {id:'l3',title:'Used spray can (aerosol)',price:3,emoji:'🧴',seller:'Wei',status:'pending',aiScore:.31,aiLabel:'review',createdAt:now-5*36e5}]
+  {id:'l3',title:'Used spray can (aerosol)',price:3,emoji:'🧴',seller:'Wei',status:'pending',aiScore:.31,aiLabel:'review',createdAt:now-5*36e5}],
+ bins:[{id:'b1',name:'Taman Sri playground',type:'general',lat:3.1065,lng:101.7430},{id:'b2',name:'Cheras Perdana recycling point',type:'recycle',lat:3.0750,lng:101.7680}]
 };
 async function initData(){
-  if(!LIVE){ D.reports=DEMO.reports; D.listings=DEMO.listings; return; }
+  if(!LIVE){ D.reports=DEMO.reports; D.listings=DEMO.listings; D.bins=DEMO.bins; return; }
   const [{initializeApp},fs,au] = await Promise.all([
-    import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'),
-    import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'),
-    import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js')]);
+    import('https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js'),
+    import('https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js'),
+    import('https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js')]);
   const app=initializeApp(firebaseConfig); fb={fs,au,db:fs.getFirestore(app),auth:au.getAuth(app)};
   await new Promise(res=>{
-    const go=()=>{ ['reports','listings'].forEach(c=>fs.onSnapshot(fs.query(fs.collection(fb.db,c),fs.orderBy('createdAt','desc')),snap=>{
+    const go=()=>{ ['reports','listings','bins'].forEach(c=>fs.onSnapshot(fs.query(fs.collection(fb.db,c),fs.orderBy('createdAt','desc')),snap=>{
         D[c]=snap.docs.map(d=>{const x=d.data(); return {id:d.id,...x,createdAt:x.createdAt?.toMillis?x.createdAt.toMillis():x.createdAt}});
         onChange();},e=>toast('Firestore: '+e.code))); res(); };
-    au.onAuthStateChanged(fb.auth,u=>{ if(u){$('#login').style.display='none';go();} else $('#login').style.display='grid'; });
-    $('#pw').onkeydown=e=>{if(e.key==='Enter')$('#go').click()};
+    au.onAuthStateChanged(fb.auth,u=>{ if(u){ $('#login').style.display='none'; $('#who').innerHTML='Signed in as<br><b>'+esc(u.email||u.uid)+'</b><br><button class="btn ghost" id="wo">Sign out</button>'; $('#wo').onclick=()=>au.signOut(fb.auth).then(()=>location.reload()); go(); } else $('#login').style.display='grid'; });
     $('#go').onclick=()=>au.signInWithEmailAndPassword(fb.auth,$('#em').value,$('#pw').value).catch(e=>$('#lerr').textContent=e.code);
   });
 }
@@ -112,16 +122,30 @@ async function patch(col,id,data){
   if(!LIVE){ Object.assign(D[col].find(x=>x.id===id),data); onChange(); return; }
   await fb.fs.updateDoc(fb.fs.doc(fb.db,col,id),data);
 }
+async function add(col,data){
+  if(!LIVE){ D[col].unshift({id:'d'+Date.now(),createdAt:Date.now(),...data}); onChange(); return; }
+  await fb.fs.addDoc(fb.fs.collection(fb.db,col),{...data,createdAt:fb.fs.serverTimestamp()});
+}
+async function removeDoc(col,id){
+  if(!LIVE){ D[col]=D[col].filter(x=>x.id!==id); onChange(); return; }
+  await fb.fs.deleteDoc(fb.fs.doc(fb.db,col,id));
+}
 
 /* ---------- AI check (Teachable Machine image model) ---------- */
 let model;
 const loadJs = u => new Promise((ok,no)=>{const s=document.createElement('script');s.src=u;s.onload=ok;s.onerror=no;document.head.append(s)});
-async function aiCheck(id){
+const checking=new Set();
+function autoCheck(){
+  if(!S.model) return;
+  D.listings.forEach(l=>{ if(l.status==='pending'&&l.aiScore==null&&l.imageUrl&&!checking.has(l.id)){ checking.add(l.id); aiCheck(l.id,true); } });
+}
+async function aiCheck(id,quiet){
+  const say=m=>{ if(!quiet) toast(m); };
   const l=D.listings.find(x=>x.id===id);
-  if(!S.model) return toast('Add your model URL in Settings first');
-  if(!l.imageUrl) return toast('Demo item has no photo. In live mode the app uploads one.');
+  if(!S.model) return say('Add your model URL in Settings first');
+  if(!l||!l.imageUrl) return say('This listing has no photo to check');
   try{
-    toast('Checking…');
+    say('Checking…');
     if(!model){ await loadJs('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js');
       await loadJs('https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js');
       const u=S.model.replace(/\/?$/,'/'); model=await tmImage.load(u+'model.json',u+'metadata.json'); }
@@ -129,8 +153,8 @@ async function aiCheck(id){
     const p=await model.predict(img); const ok=p.find(x=>x.className.toLowerCase()==='allowed');
     const score=ok?ok.probability:0, pass=score>=S.thr;
     const up={aiScore:score,aiLabel:pass?'allowed':'review'}; if(pass&&S.auto) up.status='approved';
-    await patch('listings',id,up); toast(pass?'AI says: allowed':'AI flagged for review');
-  }catch(e){ toast('AI check failed: '+e.message); }
+    await patch('listings',id,up); toast(pass?(S.auto?'AI approved: '+l.title:'AI: '+l.title+' looks OK'):'AI flagged for review: '+l.title);
+  }catch(e){ say('AI check failed: '+e.message); }
 }
 
 /* ---------- views ---------- */
@@ -142,106 +166,116 @@ function repRow(r){ return `<div class="row ${r.status==='resolved'?'res':''}" d
  <span class="chip s-${esc(r.status)}">${LABEL[r.status]||esc(r.status)}</span></div>`; }
 function home(){ const R=D.reports,L=D.listings;
  return `<h2>Overview</h2><p class="sub">Keep your neighbourhood clean</p>
- <div class="tiles"><div class="tile t2" data-go="reports:new" role="button" tabindex="0"><b>${count(R,'status','new')}</b><span>New reports to review</span></div>
- <div class="tile t1" data-go="reports:in_progress" role="button" tabindex="0"><b>${count(R,'status','in_progress')}</b><span>Reports in progress</span></div>
- <div class="tile t3" data-go="market" role="button" tabindex="0"><b>${count(L,'status','pending')}</b><span>Listings waiting for approval</span></div>
- <div class="tile t4" data-go="market" role="button" tabindex="0"><b>${count(L,'status','approved')}</b><span>Items live on ReMarket</span></div></div>
+ <div class="tiles"><div class="tile t2"><b>${count(R,'status','new')}</b><span>New reports to review</span></div>
+ <div class="tile t1"><b>${count(R,'status','in_progress')}</b><span>Reports in progress</span></div>
+ <div class="tile t3"><b>${count(L,'status','pending')}</b><span>Listings waiting for approval</span></div>
+ <div class="tile t4"><b>${count(L,'status','approved')}</b><span>Items live on ReMarket</span></div></div>
  <h3>Reports by type</h3><div class="quick">${Object.keys(ICON).map(t=>`<div class="q"><i>${ICON[t]}</i><b>${count(R,'type',t)}</b>${t}</div>`).join('')}</div>
- <h3>Latest reports</h3><div class="card">${[...R].sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).slice(0,4).map(repRow).join('')||'<p class="empty">No reports yet.</p>'}</div>`; }
-function reports(){ const F=['all','new','in_progress','resolved','rejected'], L=D.reports.filter(r=>flt==='all'||r.status===flt).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
- return `<h2>Reports</h2><p class="sub">Drag to move the map, scroll or pinch to zoom, and tap a pin or a report for details.</p>
- <div class="fl" role="group" aria-label="Filter by status">${F.map(f=>`<button data-f="${f}" class="${flt===f?'on':''}" aria-pressed="${flt===f}">${f==='all'?'All':LABEL[f]} (${f==='all'?D.reports.length:count(D.reports,'status',f)})</button>`).join('')}</div>
- <div class="split"><div id="map"></div><div class="card list">${L.map(repRow).join('')||`<p class="empty">${D.reports.length?'No reports with this status.':'No reports yet. New ones from the app show up here live.'}</p>`}</div></div>`; }
-function market(){ return `<h2>ReMarket</h2><p class="sub">Approve what users can sell. The AI check gives a first opinion; you decide.</p>
- <div class="grid">${[...D.listings].sort((a,b)=>(a.status==='pending'?0:1)-(b.status==='pending'?0:1)||(b.createdAt||0)-(a.createdAt||0)).map(l=>`<div class="card item"><div class="img">${l.imageUrl?`<img src="${esc(l.imageUrl)}" alt="" crossorigin="anonymous">`:esc(l.emoji||'📦')}</div>
+ <h3>Latest reports</h3><div class="card">${R.slice(0,4).map(repRow).join('')||'<p class="empty">No reports yet.</p>'}</div>`; }
+function reports(){ return `<h2>Reports</h2><p class="sub">Every report lodged in the app appears here with its location.</p>
+ <div class="split"><div id="map"></div><div class="card list">${D.reports.map(repRow).join('')||'<p class="empty">No reports yet. New ones from the app show up here live.</p>'}</div></div>`; }
+function market(){ return `<h2>ReMarket</h2><p class="sub">New listings are checked by AI automatically. Passing items go live; the rest wait for you.</p>
+ <div class="grid">${D.listings.map(l=>`<div class="card item"><div class="img">${l.imageUrl?`<img src="${esc(l.imageUrl)}" alt="" crossorigin="anonymous">`:esc(l.emoji||'📦')}</div>
  <b>${esc(l.title)}</b><div class="note">RM ${esc(l.price)} · ${esc(l.seller||'user')}</div>
- ${l.aiScore!=null?`<div class="bar"><i style="width:${Math.round(l.aiScore*100)}%"></i></div><span class="chip s-${esc(l.aiLabel)}">${LABEL[l.aiLabel]} · ${Math.round(l.aiScore*100)}%</span>`:'<div class="note">Not checked by AI yet</div>'}
+ ${l.aiScore!=null?`<div class="bar"><i style="width:${Math.round(l.aiScore*100)}%"></i></div><span class="chip s-${esc(l.aiLabel)}">${LABEL[l.aiLabel]} · ${Math.round(l.aiScore*100)}%</span>`:`<div class="note">${S.model?'AI check runs automatically…':'AI auto-check is off: add your model URL in Settings'}</div>`}
  <div style="margin-top:8px"><span class="chip s-${esc(l.status)}">${LABEL[l.status]}</span></div>
- <div class="acts"><button class="btn ghost" data-ai="${esc(l.id)}">Run AI check</button>
+ <div class="acts">${l.aiScore!=null?`<button class="btn ghost" data-ai="${esc(l.id)}">Re-check</button>`:''}
  ${l.status!=='approved'?`<button class="btn" data-l="approved" data-id="${esc(l.id)}">Approve</button>`:''}
  ${l.status!=='rejected'?`<button class="btn red" data-l="rejected" data-id="${esc(l.id)}">Reject</button>`:''}</div></div>`).join('')||'<p class="empty">No listings yet.</p>'}</div>`; }
+function bins(){ return `<h2>Bin Map</h2><p class="sub">Search for a place or click the map, drag the pin to fine-tune, then save. It appears in the user app.</p>
+ <div class="split"><div id="map"></div><div>
+ <div class="card"><b>Add a bin</b>
+ <label for="bq">Search a place</label>
+ <div style="display:flex;gap:6px"><input id="bq" placeholder="e.g. Taman Sri Muda, Shah Alam"><button class="btn" id="bg">Search</button></div>
+ <div id="br"></div>
+ <div class="acts"><button class="btn ghost" id="bm">📍 Use my current location</button></div>
+ <label for="bn">Name / landmark</label><input id="bn" placeholder="e.g. Taman Sri playground">
+ <label for="bt">Type</label><select id="bt">${Object.entries(BIN).map(([k,v])=>`<option value="${k}">${v.n}</option>`).join('')}</select>
+ <p class="note" id="bc">No location chosen yet. Click the map.</p>
+ <div class="acts"><button class="btn" id="bs">Save bin</button></div></div>
+ <div class="card list" id="bl" style="margin-top:14px"></div></div></div>`; }
+let pick=null, binMarks=[], sres=[];
+function showPick(){ const p=pick.getLatLng(); $('#bc').textContent='Location: '+p.lat.toFixed(5)+', '+p.lng.toFixed(5); }
+function setPick(ll,label){
+  if(pick) pick.setLatLng(ll); else { pick=L.marker(ll,{draggable:true}).addTo(map); pick.on('dragend',showPick); }
+  showPick(); if(label&&!$('#bn').value) $('#bn').value=label;
+}
+async function searchPlace(){
+  const q=$('#bq').value.trim(); if(!q) return;
+  $('#br').innerHTML='<p class="note">Searching…</p>';
+  try{
+    const j=await (await fetch('https://photon.komoot.io/api/?limit=5&q='+encodeURIComponent(q))).json();
+    sres=j.features||[];
+    $('#br').innerHTML=sres.length?sres.map((x,i)=>{const p=x.properties;const t=[p.name,p.street,p.district||p.city,p.state].filter(Boolean).join(', ');
+      return `<div class="row" data-sr="${i}"><div class="m"><b>${esc(p.name||t)}</b><span>${esc(t)}</span></div></div>`;}).join(''):'<p class="note">No results. Try a nearby landmark, or click the map.</p>';
+  }catch(e){ $('#br').innerHTML='<p class="note">Search failed. You can still click the map.</p>'; }
+}
+function drawBinMap(){
+  if(map) map.remove(); map=L.map('map').setView([3.1,101.65],10); pick=null; binMarks=[];
+  addBase(map);
+  map.on('click',e=>setPick(e.latlng));
+  $('#bm').onclick=()=>{ if(!navigator.geolocation) return toast('Location is not supported here');
+    navigator.geolocation.getCurrentPosition(p=>{ const ll=[p.coords.latitude,p.coords.longitude]; map.flyTo(ll,18); setPick(ll); },()=>toast('Could not get your location. Allow location access in the browser.')); };
+  $('#bg').onclick=searchPlace; $('#bq').onkeydown=e=>{ if(e.key==='Enter') searchPlace(); };
+  $('#bs').onclick=async()=>{
+    if(!pick) return toast('Click the map to choose a location');
+    const name=$('#bn').value.trim(); if(!name) return toast('Give the bin a name');
+    const ll=pick.getLatLng();
+    try{ await add('bins',{name,type:$('#bt').value,lat:ll.lat,lng:ll.lng}); }catch(e){ return toast('Could not save: '+e.message); }
+    $('#bn').value=''; map.removeLayer(pick); pick=null; $('#bc').textContent='Saved. Click the map to add another.'; toast('Bin added'); };
+  refreshBins(true);
+}
+function refreshBins(fit){
+  binMarks.forEach(m=>m.remove()); binMarks=[]; const pts=[]; const T=b=>BIN[b.type]||BIN.general;
+  D.bins.forEach(b=>{ if(typeof b.lat!=='number'||typeof b.lng!=='number') return;
+    binMarks.push(L.circleMarker([b.lat,b.lng],{radius:9,color:'#fff',weight:2,fillColor:T(b).c,fillOpacity:1}).addTo(map).bindPopup(`<b>${esc(b.name)}</b><br>${esc(T(b).n)}`)); pts.push([b.lat,b.lng]); });
+  if(fit&&pts.length) map.fitBounds(pts,{padding:[40,40],maxZoom:14});
+  $('#bl').innerHTML=D.bins.map(b=>`<div class="row"><div class="ic" style="background:var(--gl)">🗑️</div><div class="m"><b>${esc(b.name)}</b><span>${esc(T(b).n)}</span></div><button class="btn red" data-del="${esc(b.id)}">Delete</button></div>`).join('')||'<p class="empty">No bins yet.</p>';
+}
 function settings(){ return `<h2>Settings</h2><p class="sub">Connection and AI moderation.</p>
  <div class="card"><b>Connection</b><p class="note">${LIVE?'Connected to Firebase project <b>'+esc(firebaseConfig.projectId)+'</b>':'Demo mode: sample data only. Add your Firebase config at the top of the script to go live.'}</p>
  <label for="mu">AI model URL (Teachable Machine)</label><input id="mu" value="${esc(S.model)}" placeholder="https://teachablemachine.withgoogle.com/models/XXXX/">
  <p class="note">Train a model with two classes named “allowed” and “not allowed”, then paste its shared link.</p>
  <label for="th">Minimum confidence to pass (0 to 1)</label><input id="th" type="number" min="0" max="1" step="0.05" value="${S.thr}">
- <label style="display:flex;gap:8px;align-items:center"><input id="au" type="checkbox" style="width:auto" ${S.auto?'checked':''}> Auto-approve items that pass</label>
+ <label style="display:flex;gap:8px;align-items:center"><input id="au" type="checkbox" style="width:auto" ${S.auto?'checked':''}> Auto-approve items that pass (others wait for your review)</label>
  <div class="acts"><button class="btn" id="sv">Save settings</button>${LIVE?'<button class="btn ghost" id="so">Sign out</button>':''}</div></div>`; }
 
-/* ---------- draggable / zoomable map ---------- */
-const W=600,H=520,COL={new:'#f08a3c',in_progress:'#e0a31a',resolved:'#2f9e63',rejected:'#999'};
-const located=r=>typeof r.lat==='number'&&typeof r.lng==='number';
-function fit(){ const r=$('#map').getBoundingClientRect(), w=Math.max(W,H*r.width/r.height), h=w*r.height/r.width; V={x:W/2-w/2,y:H/2-h/2,w,h}; }
-function zoomAt(f,sx,sy){ const r=$('#map').getBoundingClientRect(), nw=Math.min(W*8,Math.max(W/12,V.w/f)), nh=nw*r.height/r.width;
-  const ux=V.x+sx/r.width*V.w, uy=V.y+sy/r.height*V.h; V.x=ux-sx/r.width*nw; V.y=uy-sy/r.height*nh; V.w=nw; V.h=nh; upd(); }
-function focusPin(id){ sel=id; const m=MP.find(m=>m.r.id===id), el=$('#map'); if(m&&el){ const r=el.getBoundingClientRect(); V.w=Math.min(V.w,W/3); V.h=V.w*r.height/r.width; V.x=m.cx-V.w/2; V.y=m.cy-V.h/2; try{el.scrollIntoView({block:'nearest',behavior:'smooth'})}catch(e){} } upd(); }
-function upd(){
-  const el=$('#map'), s=el&&el.querySelector('svg'); if(!s) return;
-  const r=el.getBoundingClientRect(); V.h=V.w*r.height/r.width;
-  s.setAttribute('viewBox',`${V.x} ${V.y} ${V.w} ${V.h}`);
-  const k=V.w/W; s.querySelectorAll('[data-pin]').forEach(c=>{c.setAttribute('r',(c.dataset.pin===sel?15:10)*k);c.setAttribute('stroke-width',3*k)});
-  let p=el.querySelector('#pop'); const m=MP.find(m=>m.r.id===sel);
-  if(!m){ if(p)p.remove(); return; }
-  if(!p){ p=document.createElement('div'); p.id='pop'; el.append(p); }
-  p.innerHTML=`<b>${esc(m.r.title||m.r.type)}</b><br>${esc(m.r.address)}<br>${LABEL[m.r.status]||esc(m.r.status)}`;
-  p.style.left=((m.cx-V.x)/V.w*100)+'%'; p.style.top=((m.cy-V.y)/V.h*100)+'%';
-}
-function bindMap(el){
-  const ptr=new Map(); let moved=0, tgt=null;
-  const mid=()=>{const r=el.getBoundingClientRect();return [r.width/2,r.height/2]};
-  el.onpointerdown=e=>{ if(e.target.closest('.mc')) return; try{el.setPointerCapture(e.pointerId)}catch(x){}
-    ptr.set(e.pointerId,{x:e.clientX,y:e.clientY}); if(ptr.size===1){moved=0;tgt=e.target.closest('[data-pin]');} else moved=99; el.classList.add('drag'); };
-  el.onpointermove=e=>{ const p=ptr.get(e.pointerId); if(!p) return; const r=el.getBoundingClientRect();
-    if(ptr.size===2){ const o=[...ptr.entries()].find(([id])=>id!==e.pointerId)[1], d0=Math.hypot(p.x-o.x,p.y-o.y);
-      p.x=e.clientX; p.y=e.clientY; const d1=Math.hypot(p.x-o.x,p.y-o.y); if(d0>0) zoomAt(d1/d0,(p.x+o.x)/2-r.left,(p.y+o.y)/2-r.top); return; }
-    const dx=e.clientX-p.x, dy=e.clientY-p.y; moved+=Math.abs(dx)+Math.abs(dy); p.x=e.clientX; p.y=e.clientY;
-    if(moved>6){ V.x-=dx*V.w/r.width; V.y-=dy*V.h/r.height; upd(); } };
-  const end=e=>{ if(!ptr.has(e.pointerId)) return; const tap=ptr.size===1&&moved<=6&&e.type==='pointerup'; ptr.delete(e.pointerId);
-    if(!ptr.size) el.classList.remove('drag'); if(tap){ sel=tgt?tgt.dataset.pin:null; upd(); } };
-  el.onpointerup=end; el.onpointercancel=end;
-  el.onwheel=e=>{ e.preventDefault(); const r=el.getBoundingClientRect(); zoomAt(Math.exp(-e.deltaY*0.0015),e.clientX-r.left,e.clientY-r.top); };
-  el.ondblclick=e=>{ if(e.target.closest('.mc')) return; const r=el.getBoundingClientRect(); zoomAt(2,e.clientX-r.left,e.clientY-r.top); };
-  el.tabIndex=0;
-  el.onkeydown=e=>{ const s=V.w*.1, k=e.key;
-    if(k==='ArrowLeft')V.x-=s; else if(k==='ArrowRight')V.x+=s; else if(k==='ArrowUp')V.y-=s; else if(k==='ArrowDown')V.y+=s;
-    else if(k==='+'||k==='=')zoomAt(1.5,...mid()); else if(k==='-')zoomAt(1/1.5,...mid()); else if(k==='0')fit(); else return;
-    e.preventDefault(); upd(); };
+function addBase(m){
+  const t=(u,a)=>L.tileLayer(u,{maxZoom:19,attribution:a});
+  const street=t('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}','Tiles © Esri');
+  const sat=t('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}','Tiles © Esri');
+  const osm=t('https://tile.openstreetmap.org/{z}/{x}/{y}.png','© OpenStreetMap');
+  street.addTo(m); L.control.layers({'Street':street,'Satellite':sat,'OpenStreetMap':osm}).addTo(m);
 }
 function drawMap(){
-  const el=$('#map'), all=D.reports.filter(located);
-  if(!all.length){ el.innerHTML='<p class="empty">No located reports yet.</p>'; return; }
-  const la=all.map(r=>r.lat), ln=all.map(r=>r.lng), a0=Math.min(...la), a1=Math.max(...la), n0=Math.min(...ln), n1=Math.max(...ln), pd=70;
-  const x=v=>pd+(n1===n0?.5:(v-n0)/(n1-n0))*(W-2*pd), y=v=>H-pd-(a1===a0?.5:(v-a0)/(a1-a0))*(H-2*pd);
-  MP=all.filter(r=>flt==='all'||r.status===flt).map(r=>({r,cx:x(r.lng),cy:y(r.lat)}));
-  if(!V) fit();
-  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:100%;display:block" role="img" aria-label="Map of reports. Drag to move, scroll or pinch to zoom."><defs><pattern id="gp" width="60" height="52" patternUnits="userSpaceOnUse"><path d="M60 0H0V52" fill="none" stroke="#fff" stroke-width="3"/></pattern></defs><rect x="-4000" y="-4000" width="9000" height="9000" fill="#e3f4ea"/><rect x="-4000" y="-4000" width="9000" height="9000" fill="url(#gp)"/>${MP.map(m=>`<circle data-pin="${esc(m.r.id)}" cx="${m.cx}" cy="${m.cy}" fill="${COL[m.r.status]||'#888'}" stroke="#fff" style="cursor:pointer"/>`).join('')}</svg>
-  <div class="mc"><button class="btn ghost" data-z="1.5" aria-label="Zoom in">+</button><button class="btn ghost" data-z="0.667" aria-label="Zoom out">−</button><button class="btn ghost" data-z="0" aria-label="Show all reports" title="Show all reports">⌖</button></div>
-  <div class="lg">${[['new','New'],['in_progress','In progress'],['resolved','Resolved'],['rejected','Rejected']].map(([k,t])=>`<span><i style="background:${COL[k]}"></i>${t}</span>`).join('')}</div>`;
-  bindMap(el); upd();
+  if(map){map.remove();} map=L.map('map').setView([3.1,101.65],10); markers={};
+  addBase(map);
+  const col={new:'#f08a3c',in_progress:'#e0a31a',resolved:'#2f9e63',rejected:'#999'}; const pts=[];
+  D.reports.filter(r=>typeof r.lat==='number'&&typeof r.lng==='number').forEach(r=>{
+    const m=L.circleMarker([r.lat,r.lng],{radius:10,color:'#fff',weight:2,fillColor:col[r.status]||'#888',fillOpacity:1}).addTo(map)
+      .bindPopup(`<b>${esc(r.title||r.type)}</b><br>${esc(r.address)}<br>${LABEL[r.status]||esc(r.status)}`);
+    markers[r.id]=m; pts.push([r.lat,r.lng]); });
+  if(pts.length) map.fitBounds(pts,{padding:[40,40],maxZoom:14});
 }
-
-/* ---------- render + events ---------- */
 function render(){
-  $('#main').innerHTML = {home,reports,market,settings}[page]();
-  document.querySelectorAll('nav button').forEach(b=>{b.classList.toggle('on',b.dataset.p===page);b.setAttribute('aria-current',b.dataset.p===page?'page':'false')});
+  $('#main').innerHTML = {home,reports,bins,market,settings}[page]();
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.p===page));
   if(page==='reports') drawMap();
+  if(page==='bins') drawBinMap();
   if(page==='settings'){
-    $('#sv').onclick=()=>{S.model=$('#mu').value.trim();S.thr=+$('#th').value||0.8;S.auto=$('#au').checked;model=null;try{localStorage.setItem('reloop',JSON.stringify(S))}catch(e){}toast('Settings saved');};
-    if($('#so')) $('#so').onclick=()=>fb.au.signOut(fb.auth);
+    $('#sv').onclick=()=>{S.model=$('#mu').value.trim();S.thr=+$('#th').value||0.8;S.auto=$('#au').checked;model=null;localStorage.setItem('reloop',JSON.stringify(S));toast('Settings saved');};
+    if($('#so')) $('#so').onclick=()=>fb.au.signOut(fb.auth).then(()=>location.reload());
   }
 }
-onChange=()=>{ if(page!=='settings') render(); };
+onChange=()=>{ autoCheck(); if(page==='bins') refreshBins(); else if(page!=='settings') render(); };
 document.addEventListener('click',e=>{
   const n=e.target.closest('nav button'); if(n){page=n.dataset.p;render();return;}
-  const a=e.target.closest('[data-a]'); if(a){const o=D.reports.find(x=>x.id===a.dataset.id).status,id=a.dataset.id;patch('reports',id,{status:a.dataset.a});toast('Report '+LABEL[a.dataset.a].toLowerCase(),()=>patch('reports',id,{status:o}));return;}
-  const l=e.target.closest('[data-l]'); if(l){const o=D.listings.find(x=>x.id===l.dataset.id).status,id=l.dataset.id;patch('listings',id,{status:l.dataset.l});toast('Listing '+LABEL[l.dataset.l].toLowerCase(),()=>patch('listings',id,{status:o}));return;}
+  const a=e.target.closest('[data-a]'); if(a){patch('reports',a.dataset.id,{status:a.dataset.a});toast('Report updated');return;}
+  const l=e.target.closest('[data-l]'); if(l){patch('listings',l.dataset.id,{status:l.dataset.l});toast('Listing '+l.dataset.l);return;}
+  const sr=e.target.closest('[data-sr]'); if(sr&&map){ const x=sres[sr.dataset.sr]; const [lng,lat]=x.geometry.coordinates; map.flyTo([lat,lng],17); setPick([lat,lng],x.properties.name); $('#br').innerHTML=''; return; }
+  const d=e.target.closest('[data-del]'); if(d){ if(confirm('Delete this bin?')) removeDoc('bins',d.dataset.del).then(()=>toast('Bin deleted')); return; }
   const i=e.target.closest('[data-ai]'); if(i){aiCheck(i.dataset.ai);return;}
-  const z=e.target.closest('[data-z]'); if(z){const f=+z.dataset.z,r=$('#map').getBoundingClientRect(); if(f){zoomAt(f,r.width/2,r.height/2)}else{fit();upd()} return;}
-  const go=e.target.closest('[data-go]'); if(go){const [p,f]=go.dataset.go.split(':'); page=p; flt=f||'all'; render(); return;}
-  const fl=e.target.closest('[data-f]'); if(fl){flt=fl.dataset.f; render(); return;}
-  const r=e.target.closest('[data-rid]'); if(r){ if(page!=='reports'){page='reports';flt='all';render();} focusPin(r.dataset.rid); }
+  const r=e.target.closest('[data-rid]'); if(r&&map&&markers[r.dataset.rid]){const m=markers[r.dataset.rid];map.flyTo(m.getLatLng(),15);m.openPopup();}
 });
-document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches&&e.target.matches('[data-go]'))e.target.click()});
-addEventListener('resize',()=>{if(page==='reports')upd()});
-await initData(); render();
+await initData(); render(); autoCheck();
 </script></body></html>
