@@ -1,8 +1,8 @@
-import 'dart:io';
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../services/auth_service.dart';
 import '../services/profile_image_service.dart';
@@ -25,18 +25,26 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
   final _imagePicker = ImagePicker();
   final _profileImageService = ProfileImageService();
 
-  String? _profileImagePath;
+  String? _profileImageUrl;
   bool _pickingImage = false;
   bool _savingProfile = false;
   bool _changingPassword = false;
+  bool _linkingGoogle = false;
+  bool _googleLinked = false;
   String? _profileError;
   String? _passwordError;
+  String? _linkError;
 
   @override
   void initState() {
     super.initState();
     final user = _authService.currentUser;
     _usernameController.text = user?.displayName ?? '';
+    _googleLinked =
+        user?.providerData.any(
+          (provider) => provider.providerId == 'google.com',
+        ) ??
+        false;
     if (user != null) _loadProfileImage(user.uid);
   }
 
@@ -51,8 +59,8 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
 
   Future<void> _loadProfileImage(String userId) async {
     try {
-      final path = await _profileImageService.loadPath(userId);
-      if (mounted) setState(() => _profileImagePath = path);
+      final url = await _profileImageService.loadUrl(userId);
+      if (mounted) setState(() => _profileImageUrl = url);
     } on Exception catch (error) {
       debugPrint('Unable to load profile image: $error');
       if (mounted) {
@@ -76,8 +84,8 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
         imageQuality: 85,
       );
       if (image == null) return;
-      final path = await _profileImageService.save(userId, image);
-      if (mounted) setState(() => _profileImagePath = path);
+      final url = await _profileImageService.save(userId, image);
+      if (mounted) setState(() => _profileImageUrl = url);
     } on Exception catch (error) {
       debugPrint('Unable to select profile image: $error');
       if (mounted) {
@@ -98,7 +106,7 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
     });
     try {
       await _profileImageService.remove(userId);
-      if (mounted) setState(() => _profileImagePath = null);
+      if (mounted) setState(() => _profileImageUrl = null);
     } on Exception catch (error) {
       debugPrint('Unable to remove profile image: $error');
       if (mounted) {
@@ -172,12 +180,56 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
     }
   }
 
+  Future<void> _linkGoogleAccount() async {
+    setState(() {
+      _linkingGoogle = true;
+      _linkError = null;
+    });
+
+    try {
+      final user = await _authService.linkGoogleAccount();
+      if (!mounted) return;
+      setState(() {
+        _googleLinked = user.providerData.any(
+          (provider) => provider.providerId == 'google.com',
+        );
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Google account linked.')));
+    } on GoogleSignInException catch (error) {
+      if (!mounted || error.code == GoogleSignInExceptionCode.canceled) return;
+      setState(() {
+        _linkError =
+            error.code == GoogleSignInExceptionCode.clientConfigurationError
+            ? 'Google Sign-In is not configured for this app yet.'
+            : error.description ?? 'Could not link your Google account.';
+      });
+    } on FirebaseAuthException catch (error) {
+      if (mounted) setState(() => _linkError = _messageFor(error));
+    } on Exception catch (error) {
+      debugPrint('Unable to link Google account: $error');
+      if (mounted) {
+        setState(
+          () => _linkError =
+              'Could not link your Google account. Please try again.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _linkingGoogle = false);
+    }
+  }
+
   String _messageFor(FirebaseAuthException error) => switch (error.code) {
     'wrong-password' ||
     'invalid-credential' => 'Your current password is incorrect.',
     'requires-recent-login' =>
       'Please sign out and sign in again before changing these details.',
     'weak-password' => 'Choose a password with at least 6 characters.',
+    'provider-already-linked' => 'A Google account is already linked.',
+    'credential-already-in-use' =>
+      'That Google account is linked to a different VertivEra account. '
+          'Accounts cannot be merged automatically.',
     'too-many-requests' => 'Too many attempts. Please try again later.',
     _ => error.message ?? 'The request failed. Please try again.',
   };
@@ -197,10 +249,10 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
     return CircleAvatar(
       radius: 42,
       backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-      child: _profileImagePath != null
+      child: _profileImageUrl != null
           ? ClipOval(
-              child: Image.file(
-                File(_profileImagePath!),
+              child: Image.network(
+                _profileImageUrl!,
                 width: 84,
                 height: 84,
                 fit: BoxFit.cover,
@@ -215,168 +267,220 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
   @override
   Widget build(BuildContext context) {
     final user = _authService.currentUser;
+    if (user == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Account settings')),
+        body: const Center(child: Text('Sign in to manage your account.')),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text('Account settings')),
-      body: user == null
-          ? const Center(child: Text('Sign in to manage your account.'))
-          : ListView(
-              padding: const EdgeInsets.all(20),
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          Form(
+            key: _profileFormKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Form(
-                  key: _profileFormKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Center(child: _profilePreview()),
-                      const SizedBox(height: 12),
-                      Wrap(
-                        alignment: WrapAlignment.center,
-                        spacing: 8,
-                        children: [
-                          OutlinedButton.icon(
-                            onPressed: _pickingImage
-                                ? null
-                                : () => _chooseProfileImage(user.uid),
-                            icon: _pickingImage
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Icon(Icons.photo_library_outlined),
-                            label: const Text('Choose picture'),
-                          ),
-                          if (_profileImagePath != null)
-                            TextButton.icon(
-                              onPressed: _pickingImage
-                                  ? null
-                                  : () => _removeProfileImage(user.uid),
-                              icon: const Icon(Icons.delete_outline),
-                              label: const Text('Remove'),
-                            ),
-                        ],
-                      ),
-                      const Padding(
-                        padding: EdgeInsets.only(top: 4, bottom: 20),
-                      
-                      ),
-                      const SizedBox(height: 20),
-                      TextFormField(
-                        controller: _usernameController,
-                        textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(
-                          labelText: 'Username',
-                          prefixIcon: Icon(Icons.person_outline),
-                        ),
-                        validator: _validateUsername,
-                      ),
-                      const SizedBox(height: 16),
-                      if (_profileError != null) ...[
-                        const SizedBox(height: 12),
-                        Text(
-                          _profileError!,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.error,
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 20),
-                      FilledButton(
-                        onPressed: _savingProfile ? null : _saveProfile,
-                        child: _savingProfile
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Text('Save profile'),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 28),
-                const Divider(),
+                Center(child: _profilePreview()),
                 const SizedBox(height: 12),
-                Text(
-                  'Change password',
-                  style: Theme.of(context).textTheme.titleLarge,
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 8,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: _pickingImage
+                          ? null
+                          : () => _chooseProfileImage(user.uid),
+                      icon: _pickingImage
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.photo_library_outlined),
+                      label: const Text('Choose picture'),
+                    ),
+                    if (_profileImageUrl != null)
+                      TextButton.icon(
+                        onPressed: _pickingImage
+                            ? null
+                            : () => _removeProfileImage(user.uid),
+                        icon: const Icon(Icons.delete_outline),
+                        label: const Text('Remove'),
+                      ),
+                  ],
+                ),
+                const Padding(padding: EdgeInsets.only(top: 4, bottom: 20)),
+                const SizedBox(height: 20),
+                TextFormField(
+                  controller: _usernameController,
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(
+                    labelText: 'Username',
+                    prefixIcon: Icon(Icons.person_outline),
+                  ),
+                  validator: _validateUsername,
                 ),
                 const SizedBox(height: 16),
-                Form(
-                  key: _passwordFormKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      TextFormField(
-                        controller: _currentPasswordController,
-                        obscureText: true,
-                        autofillHints: const [AutofillHints.password],
-                        decoration: const InputDecoration(
-                          labelText: 'Current password',
-                          prefixIcon: Icon(Icons.lock_outline),
-                        ),
-                        validator: (value) => (value ?? '').isEmpty
-                            ? 'Enter your current password.'
-                            : null,
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _newPasswordController,
-                        obscureText: true,
-                        autofillHints: const [AutofillHints.newPassword],
-                        decoration: const InputDecoration(
-                          labelText: 'New password',
-                          prefixIcon: Icon(Icons.lock_reset_outlined),
-                        ),
-                        validator: (value) => (value ?? '').length < 6
-                            ? 'Password must be at least 6 characters.'
-                            : null,
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _confirmPasswordController,
-                        obscureText: true,
-                        textInputAction: TextInputAction.done,
-                        decoration: const InputDecoration(
-                          labelText: 'Confirm new password',
-                          prefixIcon: Icon(Icons.lock_outline),
-                        ),
-                        validator: (value) =>
-                            value != _newPasswordController.text
-                            ? 'Passwords do not match.'
-                            : null,
-                      ),
-                      if (_passwordError != null) ...[
-                        const SizedBox(height: 12),
-                        Text(
-                          _passwordError!,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.error,
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 20),
-                      OutlinedButton(
-                        onPressed: _changingPassword ? null : _changePassword,
-                        child: _changingPassword
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Text('Update password'),
-                      ),
-                    ],
+                if (_profileError != null) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    _profileError!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                   ),
+                ],
+                const SizedBox(height: 20),
+                FilledButton(
+                  onPressed: _savingProfile ? null : _saveProfile,
+                  child: _savingProfile
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Save profile'),
                 ),
               ],
             ),
+          ),
+          const SizedBox(height: 28),
+          const Divider(),
+          const SizedBox(height: 12),
+          Text(
+            'Sign-in methods',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 8),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.email_outlined),
+            title: const Text('Email and password'),
+            subtitle: Text(
+              user.providerData.any(
+                    (provider) => provider.providerId == 'password',
+                  )
+                  ? 'Connected'
+                  : 'Not connected',
+            ),
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: SvgPicture.asset(
+              'assets/branding/google_g.svg',
+              width: 24,
+              height: 24,
+              excludeFromSemantics: true,
+            ),
+            title: const Text('Google'),
+            subtitle: Text(_googleLinked ? 'Connected' : 'Not connected'),
+          ),
+          if (!_googleLinked)
+            OutlinedButton.icon(
+              onPressed: _linkingGoogle ? null : _linkGoogleAccount,
+              icon: _linkingGoogle
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : SvgPicture.asset(
+                      'assets/branding/google_g.svg',
+                      width: 20,
+                      height: 20,
+                      excludeFromSemantics: true,
+                    ),
+              label: Text(
+                _linkingGoogle ? 'Connecting…' : 'Link Google account',
+              ),
+            ),
+          if (_linkError != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              _linkError!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ],
+          const SizedBox(height: 28),
+          const Divider(),
+          const SizedBox(height: 12),
+          Text(
+            'Change password',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 16),
+          Form(
+            key: _passwordFormKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextFormField(
+                  controller: _currentPasswordController,
+                  obscureText: true,
+                  autofillHints: const [AutofillHints.password],
+                  decoration: const InputDecoration(
+                    labelText: 'Current password',
+                    prefixIcon: Icon(Icons.lock_outline),
+                  ),
+                  validator: (value) => (value ?? '').isEmpty
+                      ? 'Enter your current password.'
+                      : null,
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _newPasswordController,
+                  obscureText: true,
+                  autofillHints: const [AutofillHints.newPassword],
+                  decoration: const InputDecoration(
+                    labelText: 'New password',
+                    prefixIcon: Icon(Icons.lock_reset_outlined),
+                  ),
+                  validator: (value) => (value ?? '').length < 6
+                      ? 'Password must be at least 6 characters.'
+                      : null,
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _confirmPasswordController,
+                  obscureText: true,
+                  textInputAction: TextInputAction.done,
+                  decoration: const InputDecoration(
+                    labelText: 'Confirm new password',
+                    prefixIcon: Icon(Icons.lock_outline),
+                  ),
+                  validator: (value) => value != _newPasswordController.text
+                      ? 'Passwords do not match.'
+                      : null,
+                ),
+                if (_passwordError != null) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    _passwordError!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 20),
+                OutlinedButton(
+                  onPressed: _changingPassword ? null : _changePassword,
+                  child: _changingPassword
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Update password'),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

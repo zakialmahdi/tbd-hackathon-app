@@ -1,89 +1,185 @@
 import 'dart:io';
 
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ProfileImageService {
-  Future<String?> loadPath(String userId) async {
+  static const _legacyPathKeyPrefix = 'profile_image_path_';
+
+  final FirebaseAuth _auth;
+  final FirebaseStorage _storage;
+
+  ProfileImageService({FirebaseAuth? auth, FirebaseStorage? storage})
+    : _auth = auth ?? FirebaseAuth.instance,
+      _storage = storage ?? FirebaseStorage.instance;
+
+  Future<String?> loadUrl(String userId) async {
+    final user = _auth.currentUser;
+    if (user?.uid != userId) return null;
+    final existingUrl = user?.photoURL;
+    if (existingUrl != null && existingUrl.isNotEmpty) return existingUrl;
+
     final preferences = await SharedPreferences.getInstance();
-    final path = preferences.getString(_preferenceKey(userId));
-    if (path == null || !await File(path).exists()) return null;
-    return path;
+    final legacyPath = preferences.getString('$_legacyPathKeyPrefix$userId');
+    if (legacyPath == null) return null;
+
+    final legacyFile = File(legacyPath);
+    if (!await legacyFile.exists()) {
+      await preferences.remove('$_legacyPathKeyPrefix$userId');
+      return null;
+    }
+
+    final downloadUrl = await save(userId, XFile(legacyPath));
+    await preferences.remove('$_legacyPathKeyPrefix$userId');
+    if (_isLegacyProfileFile(userId, legacyFile.path)) {
+      try {
+        await legacyFile.delete();
+      } on FileSystemException catch (error) {
+        debugPrint('Could not remove migrated local profile image: $error');
+      }
+    }
+    return downloadUrl;
   }
 
   Future<String> save(String userId, XFile image) async {
-    final directory = await _profileDirectory();
-    final extension = _extensionFor(image.path);
-    final destination = File(
-      '${directory.path}${Platform.pathSeparator}'
-      'profile_${_safeUserId(userId)}_${DateTime.now().microsecondsSinceEpoch}.$extension',
-    );
-    await File(image.path).copy(destination.path);
+    final user = _requireUser(userId);
+    final file = File(image.path);
+    if (!await file.exists()) {
+      throw StateError('The selected profile image is no longer available.');
+    }
+    final size = await file.length();
+    if (size == 0 || size > 5 * 1024 * 1024) {
+      throw StateError('Choose an image smaller than 5 MB.');
+    }
 
-    final preferences = await SharedPreferences.getInstance();
-    final key = _preferenceKey(userId);
-    final previousPath = preferences.getString(key);
+    final extension = _extensionFor(image.path);
+    final contentType = switch (extension) {
+      'jpg' || 'jpeg' => 'image/jpeg',
+      'png' => 'image/png',
+      'webp' => 'image/webp',
+      'gif' => 'image/gif',
+      'heic' => 'image/heic',
+      _ => throw StateError('Choose a JPEG, PNG, WebP, GIF, or HEIC image.'),
+    };
+    final reference = _storage
+        .ref()
+        .child('profilePictures')
+        .child(userId)
+        .child('${DateTime.now().microsecondsSinceEpoch}.$extension');
+
+    final previousUrl = user.photoURL;
+    await reference.putFile(file, SettableMetadata(contentType: contentType));
+    final downloadUrl = await reference.getDownloadURL();
     try {
-      final saved = await preferences.setString(key, destination.path);
-      if (!saved) {
-        throw StateError('Could not save the profile image reference.');
+      if (_auth.currentUser?.uid != userId) {
+        throw StateError('The signed-in account changed during image upload.');
       }
+      await user.updatePhotoURL(downloadUrl);
     } catch (_) {
-      await destination.delete();
+      await reference.delete();
       rethrow;
     }
 
-    await _deletePreviousImage(previousPath, directory, userId);
-    return destination.path;
+    await _deletePreviousImage(
+      userId,
+      previousUrl,
+      exceptPath: reference.fullPath,
+    );
+    return downloadUrl;
   }
 
   Future<void> remove(String userId) async {
-    final preferences = await SharedPreferences.getInstance();
-    final key = _preferenceKey(userId);
-    final previousPath = preferences.getString(key);
-    final removed = await preferences.remove(key);
-    if (!removed) {
-      throw StateError('Could not remove the saved profile image reference.');
-    }
-    final directory = await _profileDirectory();
-    await _deletePreviousImage(previousPath, directory, userId);
+    final user = _requireUser(userId);
+    final previousUrl = user.photoURL;
+    await user.updatePhotoURL(null);
+    await _deletePreviousImage(userId, previousUrl);
   }
 
-  Future<Directory> _profileDirectory() async {
-    final supportDirectory = await getApplicationSupportDirectory();
-    final directory = Directory(
-      '${supportDirectory.path}${Platform.pathSeparator}profile_images',
-    );
-    await directory.create(recursive: true);
-    return directory;
+  Future<void> removeForAccountDeletion(String userId) async {
+    final user = _requireUser(userId);
+    final previousUrl = user.photoURL;
+    if (previousUrl != null && previousUrl.isNotEmpty) {
+      try {
+        final reference = _storage.refFromURL(previousUrl);
+        if (reference.fullPath.startsWith('profilePictures/$userId/')) {
+          try {
+            await reference.delete();
+          } on FirebaseException catch (error) {
+            if (error.code != 'object-not-found') rethrow;
+          }
+        }
+      } on ArgumentError {
+        // The profile URL is not a Firebase Storage object owned by the app.
+      } on AssertionError catch (error) {
+        // refFromURL asserts when a non-Storage URL cannot be parsed.
+        debugPrint('Profile image URL is not a Storage URL: $error');
+      }
+    }
+    await user.updatePhotoURL(null);
+
+    final preferences = await SharedPreferences.getInstance();
+    final legacyPath = preferences.getString('$_legacyPathKeyPrefix$userId');
+    if (legacyPath != null && _isLegacyProfileFile(userId, legacyPath)) {
+      final file = File(legacyPath);
+      if (await file.exists()) await file.delete();
+    }
+    await preferences.remove('$_legacyPathKeyPrefix$userId');
+  }
+
+  User _requireUser(String userId) {
+    final user = _auth.currentUser;
+    if (user == null || user.uid != userId) {
+      throw StateError('The signed-in user does not match the profile.');
+    }
+    return user;
+  }
+
+  bool _isLegacyProfileFile(String userId, String path) {
+    final file = File(path);
+    final safeUserId = userId.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+    return file.parent.path.endsWith(
+          '${Platform.pathSeparator}profile_images',
+        ) &&
+        file.uri.pathSegments.last.startsWith('profile_${safeUserId}_');
   }
 
   Future<void> _deletePreviousImage(
-    String? path,
-    Directory directory,
     String userId,
-  ) async {
-    if (path == null) return;
-    final file = File(path);
-    if (file.parent.path != directory.path ||
-        !file.uri.pathSegments.last.startsWith(
-          'profile_${_safeUserId(userId)}_',
-        )) {
-      return;
+    String? url, {
+    String? exceptPath,
+  }) async {
+    if (url == null || url.isEmpty) return;
+    try {
+      final reference = _storage.refFromURL(url);
+      if (!reference.fullPath.startsWith('profilePictures/$userId/')) return;
+      if (reference.fullPath == exceptPath) return;
+      await reference.delete();
+    } on FirebaseException catch (error) {
+      debugPrint('Could not delete previous profile image: $error');
+    } on ArgumentError catch (error) {
+      debugPrint('Previous profile image URL is not a Storage URL: $error');
+    } on AssertionError catch (error) {
+      debugPrint('Previous profile image URL is not a Storage URL: $error');
     }
-    if (await file.exists()) await file.delete();
   }
-
-  String _preferenceKey(String userId) => 'profile_image_path_$userId';
-
-  String _safeUserId(String userId) =>
-      userId.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
 
   String _extensionFor(String path) {
     final dot = path.lastIndexOf('.');
     if (dot < 0) return 'jpg';
     final extension = path.substring(dot + 1).toLowerCase();
-    return RegExp(r'^[a-z0-9]{1,8}$').hasMatch(extension) ? extension : 'jpg';
+    if (!const {
+      'jpg',
+      'jpeg',
+      'png',
+      'webp',
+      'gif',
+      'heic',
+    }.contains(extension)) {
+      throw StateError('Choose a JPEG, PNG, WebP, GIF, or HEIC image.');
+    }
+    return extension;
   }
 }

@@ -19,6 +19,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 1600));
     await tester.pumpAndSettle();
     expect(find.text('Sign in to continue.'), findsOneWidget);
+    expect(find.text('Continue with Google'), findsOneWidget);
     expect(find.text('ReMarket'), findsNothing);
     expect(find.text('Bin Map'), findsNothing);
     expect(find.text('New here? Create an account'), findsOneWidget);
