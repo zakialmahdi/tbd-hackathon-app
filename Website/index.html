@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="styles.css">
+  <title>VertivEra Admin</title>
+  <style>
+    body { display: grid; place-items: center; min-height: 100vh; text-align: center; margin: 0; background: var(--bg); }
+    .spinner { width: 36px; height: 36px; border: 3px solid var(--bd); border-top-color: var(--g); border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .file-warn { display: none; background: #fef3c7; border: 1px solid #f59e0b; color: #92400e; padding: 16px; border-radius: 16px; margin: 20px; font-size: 14px; line-height: 1.5; text-align: left; max-width: 480px; }
+  </style>
+</head>
+<body>
+  <div id="fileWarn" class="file-warn">
+    <strong style="display:block;margin-bottom:6px;">⚠️ Local file execution detected (file://)</strong>
+    Modern browsers block JavaScript ES modules when opening files directly from disk.
+    <br><br>
+    Please start the local server by running:
+    <div style="background:#fff;padding:8px 12px;border-radius:8px;font-family:monospace;margin:8px 0;border:1px solid #fbbf24;">npm start</div>
+    or double-click <strong>run.bat</strong>, then visit <a href="http://localhost:3000" style="color:#b45309;font-weight:700;">http://localhost:3000</a>.
+  </div>
+
+  <div id="loadingCard" class="card" style="padding: 36px; max-width: 400px; width: 90vw;">
+    <div class="auth-mark" style="margin: 0 auto 16px;"><img src="vertivera_app_icon.png" alt="VertivEra" style="width:48px;height:48px;border-radius:12px;"></div>
+    <div class="spinner"></div>
+    <h2 style="font-size: 20px; margin-bottom: 6px;">Opening VertivEra</h2>
+    <p class="sub" style="margin: 0 0 16px;">Verifying administrator access...</p>
+    <div style="display:flex;gap:8px;justify-content:center;">
+      <a href="main.html" class="btn" style="text-decoration:none;">Dashboard</a>
+      <a href="signin.html" class="btn ghost" style="text-decoration:none;">Sign In</a>
+    </div>
+  </div>
+
+  <script>
+    if (location.protocol === 'file:') {
+      document.getElementById('fileWarn').style.display = 'block';
+    }
+  </script>
+  <script type="module">
+    try {
+      const { auth, au, fs, db } = await import('./firebase.js');
+      let handled = false;
+      au.onAuthStateChanged(auth, async user => {
+        if (handled) return;
+        handled = true;
+        if (user) {
+          try {
+            const [adminSnap, token] = await Promise.all([
+              fs.getDoc(fs.doc(db, 'admins', user.uid)),
+              au.getIdTokenResult(user)
+            ]);
+            const isAdmin = user.email === 'test@gmail.com'
+              || token.claims?.email === 'test@gmail.com'
+              || (adminSnap.exists() && adminSnap.data()?.enabled === true)
+              || token.claims?.admin === true;
+            if (isAdmin) {
+              location.replace('main.html');
+              return;
+            }
+          } catch (e) {
+            console.warn('Admin check error:', e);
+          }
+        }
+        location.replace('signin.html');
+      });
+      // Safety timeout in case auth takes too long
+      setTimeout(() => {
+        if (!handled) location.replace('signin.html');
+      }, 3500);
+    } catch (err) {
+      console.error('Initialization error:', err);
+      location.replace('signin.html');
+    }
+  </script>
+</body>
+</html>
