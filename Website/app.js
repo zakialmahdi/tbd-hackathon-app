@@ -34,14 +34,18 @@ async function initData(){
       if(initialized) return;
       initialized=true;
       try{
-        const [adminSnap,token]=await Promise.all([
-          fs.getDoc(fs.doc(db,'admins',user.uid)),
-          au.getIdTokenResult(user)
-        ]);
-        const enabled = user.email === 'test@gmail.com'
-          || token.claims?.email === 'test@gmail.com'
-          || (adminSnap.exists() && adminSnap.data()?.enabled === true)
-          || token.claims?.admin === true;
+        // The allowlisted account must not depend on a Firestore read. This
+        // also lets it reach the console if the admin document is unavailable.
+        let enabled = user.email === 'test@gmail.com';
+        if (!enabled) {
+          const [adminSnap,token]=await Promise.all([
+            fs.getDoc(fs.doc(db,'admins',user.uid)),
+            au.getIdTokenResult(user)
+          ]);
+          enabled = token.claims?.email === 'test@gmail.com'
+            || (adminSnap.exists() && adminSnap.data()?.enabled === true)
+            || token.claims?.admin === true;
+        }
 
         if(!enabled){
           toast('This account does not have admin access. Register with the admin key or contact an administrator.');

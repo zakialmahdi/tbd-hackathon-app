@@ -69,7 +69,9 @@ document.querySelectorAll('[data-reveal]').forEach(button => button.addEventList
   button.setAttribute('aria-label', (visible ? 'Hide ' : 'Show ') + input.id);
 }));
 
-$('#go')?.addEventListener('click', async () => {
+const authForm = $('#authForm');
+authForm?.addEventListener('submit', async event => {
+  event.preventDefault();
   message.textContent = '';
   const email = $('#em')?.value.trim();
   const password = $('#pw')?.value;

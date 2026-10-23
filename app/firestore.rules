@@ -5,6 +5,18 @@ rules_version = '2';
 // and maintenanceNote string fields.
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null
+        && (request.auth.token.email == 'test@gmail.com'
+          || request.auth.token.admin == true
+          || (exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+            && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.enabled == true));
+    }
+
+    match /admins/{adminId} {
+      allow get: if request.auth != null && request.auth.uid == adminId;
+      allow list, create, update, delete: if false;
+    }
     match /users/{userId} {
       allow get: if request.auth != null && request.auth.uid == userId;
       allow list: if false;
@@ -151,7 +163,20 @@ service cloud.firestore {
         && request.resource.data.status == 'active'
         && request.resource.data.price is number
         && request.resource.data.price >= 0;
-      allow update, delete: if request.auth != null
+      allow update: if (request.auth != null
+          && resource.data.ownerId == request.auth.uid
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['status'])
+            || request.resource.data.status in ['pending', 'pending_review', 'sold', 'hidden']))
+        || (isAdmin()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'aiScore', 'aiLabel'])
+          && request.resource.data.status in ['pending', 'pending_review', 'active', 'rejected', 'sold', 'hidden']
+          && (!('aiScore' in request.resource.data)
+            || (request.resource.data.aiScore is number
+              && request.resource.data.aiScore >= 0
+              && request.resource.data.aiScore <= 1))
+          && (!('aiLabel' in request.resource.data)
+            || request.resource.data.aiLabel in ['allowed', 'review']));
+      allow delete: if request.auth != null
         && resource.data.ownerId == request.auth.uid;
     }
 

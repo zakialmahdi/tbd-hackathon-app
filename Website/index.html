@@ -47,14 +47,16 @@
         handled = true;
         if (user) {
           try {
-            const [adminSnap, token] = await Promise.all([
-              fs.getDoc(fs.doc(db, 'admins', user.uid)),
-              au.getIdTokenResult(user)
-            ]);
-            const isAdmin = user.email === 'test@gmail.com'
-              || token.claims?.email === 'test@gmail.com'
-              || (adminSnap.exists() && adminSnap.data()?.enabled === true)
-              || token.claims?.admin === true;
+            let isAdmin = user.email === 'test@gmail.com';
+            if (!isAdmin) {
+              const [adminSnap, token] = await Promise.all([
+                fs.getDoc(fs.doc(db, 'admins', user.uid)),
+                au.getIdTokenResult(user)
+              ]);
+              isAdmin = token.claims?.email === 'test@gmail.com'
+                || (adminSnap.exists() && adminSnap.data()?.enabled === true)
+                || token.claims?.admin === true;
+            }
             if (isAdmin) {
               location.replace('main.html');
               return;
