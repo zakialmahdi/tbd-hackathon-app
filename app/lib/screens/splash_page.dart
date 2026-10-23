@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -17,21 +19,24 @@ class _SplashPageState extends State<SplashPage> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(milliseconds: 1600), () {
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => AuthGate(
-              authStateChanges: widget.authStateChanges,
-              authenticatedChild: HomeShell(
-                authStateChanges: widget.authStateChanges,
-              ),
-            ),
+    unawaited(_continueStartup());
+  }
+
+  Future<void> _continueStartup() async {
+    await Future<void>.delayed(const Duration(milliseconds: 1600));
+    if (!mounted) return;
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AuthGate(
+          authStateChanges: widget.authStateChanges,
+          authenticatedChild: HomeShell(
+            authStateChanges: widget.authStateChanges,
           ),
-        );
-      }
-    });
+        ),
+      ),
+    );
   }
 
   @override

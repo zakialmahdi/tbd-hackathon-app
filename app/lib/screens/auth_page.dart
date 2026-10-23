@@ -1,5 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../app_config.dart';
 import '../services/auth_service.dart';
@@ -55,12 +57,49 @@ class _AuthPageState extends State<AuthPage> {
     } on FirebaseAuthException catch (error) {
       if (!mounted) return;
       setState(() => _errorMessage = _messageForAuthError(error));
+    } on StateError catch (error) {
+      if (!mounted) return;
+      setState(() => _errorMessage = error.message);
     } on Exception catch (error) {
       debugPrint('Authentication failed: $error');
       if (!mounted) return;
       setState(
         () => _errorMessage =
             'Could not complete authentication. Please try again.',
+      );
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  Future<void> _signInWithGoogle() async {
+    setState(() {
+      _isSubmitting = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await _authService.signInWithGoogle();
+    } on GoogleSignInException catch (error) {
+      if (!mounted || error.code == GoogleSignInExceptionCode.canceled) return;
+      setState(() {
+        _errorMessage =
+            error.code == GoogleSignInExceptionCode.clientConfigurationError
+            ? 'Google Sign-In is not configured for this app yet. Check the '
+                  'Firebase Google provider and platform OAuth setup.'
+            : error.description ?? 'Could not complete Google Sign-In.';
+      });
+    } on FirebaseAuthException catch (error) {
+      if (!mounted) return;
+      setState(() => _errorMessage = _messageForAuthError(error));
+    } on StateError catch (error) {
+      if (!mounted) return;
+      setState(() => _errorMessage = error.message);
+    } on Exception catch (error) {
+      debugPrint('Google Sign-In failed: $error');
+      if (!mounted) return;
+      setState(
+        () => _errorMessage = 'Google Sign-In could not be completed: $error',
       );
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -77,7 +116,10 @@ class _AuthPageState extends State<AuthPage> {
         'email-already-in-use' => 'An account already exists for this email.',
         'weak-password' => 'Choose a password with at least 6 characters.',
         'operation-not-allowed' =>
-          'Email/password sign-in is not enabled for this Firebase project.',
+          'This sign-in method is not enabled for this Firebase project.',
+        'account-exists-with-different-credential' =>
+          'An account already uses this email. Sign in with that account, '
+              'then open Settings > Account settings to link Google.',
         'too-many-requests' => 'Too many attempts. Please try again later.',
         _ => error.message ?? 'Authentication failed. Please try again.',
       };
@@ -232,6 +274,41 @@ class _AuthPageState extends State<AuthPage> {
                             _isCreatingAccount ? 'Create account' : 'Sign in',
                           ),
                   ),
+                  ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        const Expanded(child: Divider()),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Text(
+                            'OR',
+                            style: TextStyle(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const Expanded(child: Divider()),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: _isSubmitting ? null : _signInWithGoogle,
+                      icon: SvgPicture.asset(
+                        'assets/branding/google_g.svg',
+                        width: 20,
+                        height: 20,
+                        excludeFromSemantics: true,
+                      ),
+                      label: const Text('Continue with Google'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(50),
+                      ),
+                    ),
+                  ],
                   TextButton(
                     onPressed: _isSubmitting
                         ? null

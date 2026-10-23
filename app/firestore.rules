@@ -14,7 +14,115 @@ service cloud.firestore {
         && request.resource.data.keys().hasAll(['co2SavedKg'])
         && request.resource.data.co2SavedKg is number
         && request.resource.data.co2SavedKg == 0;
-      allow update, delete: if false;
+      allow update: if false;
+      allow delete: if request.auth != null && request.auth.uid == userId;
+
+      match /notificationDevices/{deviceId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow create: if request.auth != null
+          && request.auth.uid == userId
+          && request.resource.data.keys().hasOnly([
+            'token',
+            'pushEnabled',
+            'binAlertsEnabled',
+            'enabled',
+            'location',
+            'updatedAt'
+          ])
+          && request.resource.data.keys().hasAll([
+            'token',
+            'pushEnabled',
+            'binAlertsEnabled',
+            'enabled',
+            'updatedAt'
+          ])
+          && request.resource.data.token is string
+          && request.resource.data.pushEnabled is bool
+          && request.resource.data.binAlertsEnabled is bool
+          && request.resource.data.enabled is bool
+          && request.resource.data.enabled
+            == (request.resource.data.pushEnabled
+              && request.resource.data.binAlertsEnabled)
+          && request.resource.data.updatedAt is timestamp
+          && (!('location' in request.resource.data)
+            || request.resource.data.location is latlng);
+        allow update: if request.auth != null
+          && request.auth.uid == userId
+          && request.resource.data.keys().hasOnly([
+            'token',
+            'pushEnabled',
+            'binAlertsEnabled',
+            'enabled',
+            'location',
+            'updatedAt',
+            'lastAlertedBinId'
+          ])
+          && request.resource.data.keys().hasAll([
+            'token',
+            'pushEnabled',
+            'binAlertsEnabled',
+            'enabled',
+            'updatedAt'
+          ])
+          && request.resource.data.token is string
+          && request.resource.data.pushEnabled is bool
+          && request.resource.data.binAlertsEnabled is bool
+          && request.resource.data.enabled is bool
+          && request.resource.data.enabled
+            == (request.resource.data.pushEnabled
+              && request.resource.data.binAlertsEnabled)
+          && request.resource.data.updatedAt is timestamp
+          && (!('location' in request.resource.data)
+            || request.resource.data.location is latlng)
+          && request.resource.data.get('lastAlertedBinId', null)
+            == resource.data.get('lastAlertedBinId', null);
+        allow delete: if request.auth != null && request.auth.uid == userId;
+      }
+
+      match /savedAddresses/{addressId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow create: if request.auth != null
+          && request.auth.uid == userId
+          && request.resource.data.keys().hasOnly([
+            'address',
+            'location',
+            'createdAt',
+            'updatedAt'
+          ])
+          && request.resource.data.keys().hasAll([
+            'address',
+            'location',
+            'createdAt',
+            'updatedAt'
+          ])
+          && request.resource.data.address is string
+          && request.resource.data.address.size() > 0
+          && request.resource.data.address.size() <= 500
+          && request.resource.data.location is latlng
+          && request.resource.data.createdAt is timestamp
+          && request.resource.data.updatedAt == request.time;
+        allow update: if request.auth != null
+          && request.auth.uid == userId
+          && request.resource.data.keys().hasOnly([
+            'address',
+            'location',
+            'createdAt',
+            'updatedAt'
+          ])
+          && request.resource.data.keys().hasAll([
+            'address',
+            'location',
+            'createdAt',
+            'updatedAt'
+          ])
+          && request.resource.data.address is string
+          && request.resource.data.address.size() > 0
+          && request.resource.data.address.size() <= 500
+          && request.resource.data.location is latlng
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if request.auth != null && request.auth.uid == userId;
+      }
     }
 
     match /bins/{binId} {
