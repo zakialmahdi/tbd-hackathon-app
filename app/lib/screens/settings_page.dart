@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../app_config.dart';
 import '../services/account_deletion_service.dart';
@@ -46,7 +47,7 @@ class _SettingsPageState extends State<SettingsPage> {
   String? _accountDeletionStatus;
   String? _accountDeletionError;
   String? _notificationUserId;
-  String lang = 'English';
+  String get lang => languageName(appLocale.value);
   String? _profileImageUrl;
   String? _loadedProfileUserId;
   String? _co2SavingsUserId;
@@ -63,6 +64,13 @@ class _SettingsPageState extends State<SettingsPage> {
       debugPrint('Unable to sign out: $error');
       if (mounted) snack(context, 'Could not sign out. Please try again.');
     }
+  }
+
+  Future<void> _selectLanguage(Locale locale) async {
+    appLocale.value = locale;
+    setState(() {});
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString('app_language', locale.languageCode);
   }
 
   Future<void> _confirmDeleteAccount(User user) async {
@@ -404,16 +412,16 @@ class _SettingsPageState extends State<SettingsPage> {
                 context: context,
                 builder: (_) => Column(
                   mainAxisSize: MainAxisSize.min,
-                  children: ['English', 'Bahasa Melayu', '中文', 'தமிழ்']
+                  children: supportedAppLocales
                       .map(
-                        (l) => ListTile(
-                          title: Text(l),
-                          trailing: l == lang
+                        (locale) => ListTile(
+                          title: Text(languageName(locale)),
+                          trailing: locale == appLocale.value
                               ? const Icon(Icons.check, color: kGreen)
                               : null,
-                          onTap: () {
-                            setState(() => lang = l);
-                            Navigator.pop(context);
+                          onTap: () async {
+                            await _selectLanguage(locale);
+                            if (context.mounted) Navigator.pop(context);
                           },
                         ),
                       )
