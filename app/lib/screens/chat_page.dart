@@ -27,7 +27,9 @@ class _ChatPageState extends State<ChatPage> {
   late final StreamSubscription<Map<String, String>> _nameSubscription;
   Map<String, String> _participantNames = const {};
   late final StreamSubscription<bool> _closedSubscription;
+  late final StreamSubscription<String> _roleSubscription;
   bool _closed = false;
+  String _roleLabel = 'Marketplace conversation';
 
   @override
   void initState() {
@@ -42,6 +44,11 @@ class _ChatPageState extends State<ChatPage> {
         .listen((names) {
           if (mounted) setState(() => _participantNames = names);
         });
+    _roleSubscription = _repository
+        .watchConversationRole(widget.conversationId)
+        .listen((role) {
+          if (mounted) setState(() => _roleLabel = role);
+        });
   }
 
   @override
@@ -49,6 +56,7 @@ class _ChatPageState extends State<ChatPage> {
     _controller.dispose();
     _closedSubscription.cancel();
     _nameSubscription.cancel();
+    _roleSubscription.cancel();
     super.dispose();
   }
 
@@ -82,7 +90,18 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(widget.title)),
+    appBar: AppBar(
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(widget.title),
+          Text(
+            _roleLabel,
+            style: Theme.of(context).textTheme.labelMedium,
+          ),
+        ],
+      ),
+    ),
     body: Column(
       children: [
         Expanded(

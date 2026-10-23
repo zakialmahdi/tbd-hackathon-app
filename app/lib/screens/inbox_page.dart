@@ -79,10 +79,13 @@ class _ChatInbox extends StatelessWidget {
             final otherName = chat['buyerId'] == _repository.currentUserId
               ? chat['sellerName'] as String? ?? 'Seller'
               : chat['buyerName'] as String? ?? 'Buyer';
+            final roleLabel = chat['buyerId'] == _repository.currentUserId
+              ? 'Buying from $otherName'
+              : 'Selling to $otherName';
           return ListTile(
             leading: const CircleAvatar(child: Icon(Icons.chat_outlined)),
             title: Text(title),
-            subtitle: Text(otherName),
+            subtitle: Text(roleLabel),
             trailing: IconButton(
               tooltip: 'Open chat',
               icon: const Icon(Icons.chat_outlined),
