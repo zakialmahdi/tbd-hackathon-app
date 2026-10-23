@@ -193,8 +193,12 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                 Card(
                   child: ListTile(
                     leading: const CircleAvatar(child: Icon(Icons.person)),
-                    title: Text(item.seller),
-                    subtitle: const Text('Marketplace seller'),
+                    title: Text(
+                      isSeller ? 'Sold by you' : 'Sold by ${item.seller}',
+                    ),
+                    subtitle: Text(
+                      isSeller ? 'Your marketplace listing' : 'Marketplace seller',
+                    ),
                   ),
                 ),
               ],

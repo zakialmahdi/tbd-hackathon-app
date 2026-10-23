@@ -39,6 +39,21 @@ class ListingRepository {
             };
           });
 
+  Stream<String> watchConversationRole(String conversationId) {
+    final userId = _auth.currentUser?.uid;
+    return _firestore
+        .collection('conversations')
+        .doc(conversationId)
+        .snapshots()
+        .map((snapshot) {
+          final data = snapshot.data() ?? const <String, dynamic>{};
+          if (userId != null && data['buyerId'] == userId) {
+            return 'Buying from ${data['sellerName'] as String? ?? 'seller'}';
+          }
+          return 'Selling to ${data['buyerName'] as String? ?? 'buyer'}';
+        });
+  }
+
   Future<void> syncUserName(String name) async {
     final userId = _auth.currentUser?.uid;
     if (userId == null) return;
@@ -209,10 +224,17 @@ class ListingRepository {
         .collection('conversations')
         .where('participants', arrayContains: userId)
         .snapshots()
-        .map((snapshot) {
-          final chats = snapshot.docs.map((doc) {
-            return {'id': doc.id, ...doc.data()};
-          }).toList();
+        .asyncMap((snapshot) async {
+          final chats = <Map<String, dynamic>>[];
+          for (final doc in snapshot.docs) {
+            final messages = await doc.reference
+                .collection('messages')
+                .limit(1)
+                .get();
+            if (messages.docs.isNotEmpty) {
+              chats.add({'id': doc.id, ...doc.data()});
+            }
+          }
           chats.sort((a, b) {
             final aTime = a['updatedAt'] as Timestamp?;
             final bTime = b['updatedAt'] as Timestamp?;
