@@ -28,7 +28,7 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           # Point this strictly to your target folder
-          path: './Website'
+          path: 'tbd-hackathon-app/Website'
 
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
